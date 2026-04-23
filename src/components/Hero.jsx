@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+
 function Hero() {
+  const navigate = useNavigate()
+
   return (
     <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#040810] px-8">
 
@@ -38,10 +42,17 @@ function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex gap-4 justify-center flex-wrap mb-16">
-          <button className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-8 py-4 rounded font-black text-sm tracking-widest hover:brightness-110 hover:-translate-y-1 transition-all duration-300" style={{ fontFamily: 'monospace' }}>
+          <button
+            onClick={() => navigate('/upload')}
+            className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-8 py-4 rounded font-black text-sm tracking-widest hover:brightness-110 hover:-translate-y-1 transition-all duration-300"
+            style={{ fontFamily: 'monospace' }}
+          >
             START UPLOADING
           </button>
-          <button className="border border-cyan-500/30 text-cyan-400 px-8 py-4 rounded text-sm tracking-widest uppercase hover:bg-cyan-500/10 hover:-translate-y-1 transition-all duration-300">
+          <button
+            onClick={() => navigate('/explore')}
+            className="border border-cyan-500/30 text-cyan-400 px-8 py-4 rounded text-sm tracking-widest uppercase hover:bg-cyan-500/10 hover:-translate-y-1 transition-all duration-300"
+          >
             Explore Clips ▶
           </button>
         </div>

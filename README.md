@@ -7,6 +7,12 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 ## 🔗 Live Demo
 [https://fragbeats.vercel.app](https://fragbeats.vercel.app)
 
+## 📄 Pages
+- 🏠 Homepage
+- 🔐 Login / Signup
+- 🔍 Explore — Search and filter clips
+- 📤 Upload — 3 step clip upload flow
+
 ## 🛠️ Built With
 - React
 - Vite
@@ -18,6 +24,8 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 - Clean dark cyber UI
 - Trending gaming clips feed
 - Lo-fi music integration
+- Search and filter by game
+- 3 step upload flow
 - Community for gamers
 
 ## 👨‍💻 Developer

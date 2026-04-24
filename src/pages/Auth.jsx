@@ -4,7 +4,7 @@ function Auth() {
   const [isLogin, setIsLogin] = useState(true)
 
   return (
-    <div className="min-h-screen bg-[#040810] flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
 
       {/* Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">

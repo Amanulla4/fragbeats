@@ -33,7 +33,7 @@ function Explore() {
   })
 
   return (
-    <div className="min-h-screen bg-[#040810]">
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-8 pt-32 pb-16">
@@ -52,7 +52,7 @@ function Explore() {
             placeholder="Search by game, creator or music..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-[#0b1425] border border-cyan-500/20 rounded-lg pl-12 pr-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
+             className="w-full border border-cyan-500/20 rounded-lg pl-12 pr-4 py-3 text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600" style={{ background: 'var(--card)', color: 'var(--text)' }}
           />
         </div>
 

@@ -4,7 +4,7 @@ function Hero() {
   const navigate = useNavigate()
 
   return (
-    <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#040810] px-8">
+    <section className="min-h-screen flex items-center justify-center relative overflow-hidden px-8" style={{ background: 'var(--bg)' }}>
 
       {/* Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">

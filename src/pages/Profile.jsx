@@ -19,8 +19,7 @@ function Profile() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-[#040810]">
-      <Navbar />
+<div className="min-h-screen" style={{ background: 'var(--bg)' }}>      <Navbar />
 
       <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">
 

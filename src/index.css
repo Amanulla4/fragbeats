@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+:root {
+  --bg: #040810;
+  --bg2: #070d1a;
+  --card: #0b1425;
+  --text: #e8f4f8;
+  --muted: #6b8a9a;
+}
+
+.light-mode {
+  --bg: #f0f4f8;
+  --bg2: #e2e8f0;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+}
+
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTheme } from '../context/ThemeContext'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const navigate = useNavigate()
+  const { isDark, toggleTheme } = useTheme()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
@@ -18,7 +20,8 @@ function Navbar() {
   }
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-300 ${scrolled ? 'bg-[#040810]/90 backdrop-blur-lg border-b border-cyan-500/10' : ''}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-300 ${scrolled ? 'backdrop-blur-lg border-b border-cyan-500/10' : ''}`}
+style={{ background: scrolled ? 'var(--bg)' : 'transparent' }}>
 
       <div onClick={() => navigate('/')} className="font-black text-xl tracking-widest bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent cursor-pointer" style={{ fontFamily: 'monospace' }}>
         FRAGBEATS
@@ -35,6 +38,15 @@ function Navbar() {
       </ul>
 
       <div className="flex gap-3 items-center">
+
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-10 h-10 rounded-full border border-cyan-500/20 flex items-center justify-center text-lg hover:border-cyan-400 transition-all duration-200"
+        >
+          {isDark ? '☀️' : '🌙'}
+        </button>
+
         <button onClick={() => navigate('/upload')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
           Upload
         </button>

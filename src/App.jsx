@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Explore from './pages/Explore'
@@ -7,11 +8,21 @@ import Profile from './pages/Profile'
 import Music from './pages/Music'
 import NotFound from './pages/NotFound'
 import ScrollToTop from './components/ScrollToTop'
+import PageLoader from './components/PageLoader'
 
-function App() {
+function AnimatedRoutes() {
+  const location = useLocation()
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    setLoading(true)
+    const timer = setTimeout(() => setLoading(false), 600)
+    return () => clearTimeout(timer)
+  }, [location.pathname])
+
   return (
-    <BrowserRouter>
-      <ScrollToTop />
+    <>
+      {loading && <PageLoader />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
@@ -21,6 +32,15 @@ function App() {
         <Route path="/music" element={<Music />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+    </>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ScrollToTop />
+      <AnimatedRoutes />
     </BrowserRouter>
   )
 }

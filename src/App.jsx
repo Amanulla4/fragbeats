@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Explore from './pages/Explore'
 import Upload from './pages/Upload'
+import Profile from './pages/Profile'
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/upload" element={<Upload />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </BrowserRouter>
   )

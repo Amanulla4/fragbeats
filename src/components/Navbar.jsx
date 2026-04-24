@@ -13,6 +13,7 @@ function Navbar() {
 
   const handleNavClick = (link) => {
     if (link === 'Explore') navigate('/explore')
+    if (link === 'Profile') navigate('/profile')
   }
 
   return (
@@ -23,7 +24,7 @@ function Navbar() {
       </div>
 
       <ul className="hidden md:flex gap-8 list-none">
-        {['Explore', 'Trending', 'Artists', 'Community'].map(link => (
+        {['Explore', 'Trending', 'Artists', 'Profile'].map(link => (
           <li key={link}>
             <span onClick={() => handleNavClick(link)} className="text-slate-400 text-sm tracking-widest uppercase cursor-pointer hover:text-cyan-400 transition-colors duration-200">
               {link}
@@ -33,8 +34,8 @@ function Navbar() {
       </ul>
 
       <div className="flex gap-3 items-center">
-        <button onClick={() => navigate('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
-          Log In
+        <button onClick={() => navigate('/upload')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
+          Upload
         </button>
         <button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-2 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
           JOIN FREE

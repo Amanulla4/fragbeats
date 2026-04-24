@@ -13,6 +13,7 @@ function Navbar() {
 
   const handleNavClick = (link) => {
     if (link === 'Explore') navigate('/explore')
+    if (link === 'Music') navigate('/music')
     if (link === 'Profile') navigate('/profile')
   }
 
@@ -24,7 +25,7 @@ function Navbar() {
       </div>
 
       <ul className="hidden md:flex gap-8 list-none">
-        {['Explore', 'Trending', 'Artists', 'Profile'].map(link => (
+        {['Explore', 'Music', 'Profile'].map(link => (
           <li key={link}>
             <span onClick={() => handleNavClick(link)} className="text-slate-400 text-sm tracking-widest uppercase cursor-pointer hover:text-cyan-400 transition-colors duration-200">
               {link}

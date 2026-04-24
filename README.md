@@ -12,6 +12,9 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 - 🔐 Login / Signup
 - 🔍 Explore — Search and filter clips
 - 📤 Upload — 3 step clip upload flow
+- 👤 Profile — Stats and clips
+- 🎵 Music Library — 12 lo-fi tracks
+- 💀 404 Page
 
 ## 🛠️ Built With
 - React
@@ -23,10 +26,12 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 ## ✨ Features
 - Clean dark cyber UI
 - Trending gaming clips feed
-- Lo-fi music integration
-- Search and filter by game
+- Lo-fi music library
+- Search and filter by game and genre
 - 3 step upload flow
-- Community for gamers
+- User profile with stats
+- Smooth scroll to top on navigation
+- Custom 404 page
 
 ## 👨‍💻 Developer
 **Aman Pathan** — [GitHub](https://github.com/Amanulla4) | [LinkedIn](https://linkedin.com/in/amanulla-pathan)

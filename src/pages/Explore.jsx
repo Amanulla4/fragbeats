@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import CommentModal from '../components/CommentModal'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
@@ -19,6 +20,7 @@ function Explore() {
   const [activeGame, setActiveGame] = useState('All')
   const [search, setSearch] = useState('')
   const [liked, setLiked] = useState([])
+  const [activeComment, setActiveComment] = useState(null)
 
   const toggleLike = (id) => {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
@@ -52,7 +54,8 @@ function Explore() {
             placeholder="Search by game, creator or music..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-             className="w-full border border-cyan-500/20 rounded-lg pl-12 pr-4 py-3 text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600" style={{ background: 'var(--card)', color: 'var(--text)' }}
+            className="w-full border border-cyan-500/20 rounded-lg pl-12 pr-4 py-3 text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
+            style={{ background: 'var(--card)', color: 'var(--text)' }}
           />
         </div>
 
@@ -104,12 +107,20 @@ function Explore() {
                   <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500 text-xs">👁 {clip.views}</span>
-                    <button
-                      onClick={() => toggleLike(clip.id)}
-                      className={`text-xs transition-all duration-200 ${liked.includes(clip.id) ? 'text-pink-400' : 'text-slate-500 hover:text-pink-400'}`}
-                    >
-                      {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => toggleLike(clip.id)}
+                        className={`text-xs transition-all duration-200 ${liked.includes(clip.id) ? 'text-pink-400' : 'text-slate-500 hover:text-pink-400'}`}
+                      >
+                        {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes}
+                      </button>
+                      <button
+                        onClick={() => setActiveComment(clip)}
+                        className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
+                      >
+                        💬
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -124,6 +135,14 @@ function Explore() {
         )}
 
       </div>
+
+      {activeComment && (
+        <CommentModal
+          clip={activeComment}
+          onClose={() => setActiveComment(null)}
+        />
+      )}
+
       <Footer />
     </div>
   )

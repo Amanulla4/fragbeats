@@ -23,6 +23,7 @@ function Navbar() {
     { label: 'Explore', path: '/explore' },
     { label: 'Music', path: '/music' },
     { label: 'Profile', path: '/profile' },
+    { label: '🔔', path: '/notifications' },
   ]
 
   return (

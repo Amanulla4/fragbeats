@@ -1,5 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Explore from './pages/Explore'
@@ -7,8 +6,11 @@ import Upload from './pages/Upload'
 import Profile from './pages/Profile'
 import Music from './pages/Music'
 import NotFound from './pages/NotFound'
+import Notifications from './pages/Notifications'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -30,6 +32,7 @@ function AnimatedRoutes() {
         <Route path="/upload" element={<Upload />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/music" element={<Music />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

@@ -8,12 +8,18 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 [https://fragbeats.vercel.app](https://fragbeats.vercel.app)
 
 ## 📄 Pages
-- 🏠 Homepage
-- 🔐 Login / Signup
-- 🔍 Explore — Search and filter clips
+- 🏠 Homepage — Hero, Features, Trending, CTA
+- 🔐 Auth — Login / Signup toggle
+- 🔍 Explore — Search, game filters, like and comment
 - 📤 Upload — 3 step clip upload flow
-- 👤 Profile — Stats and clips
-- 🎵 Music Library — 12 lo-fi tracks
+- 👤 Profile — Stats and clips grid
+- 🎵 Music Library — 12 lo-fi tracks with genre filters
+- 🔔 Notifications — Likes, comments, follows
+- 🔎 Search — Search clips, creators and music
+- 🏆 Leaderboard — Top creators, clips and music
+- 🎬 Clip Detail — Video player, comments, related clips
+- 📊 Analytics — Charts and performance stats
+- ⚙️ Settings — Account, notifications, privacy, appearance
 - 💀 404 Page
 
 ## 🛠️ Built With
@@ -21,17 +27,23 @@ A platform where gamers upload their best clips, add lo-fi beats, and share with
 - Vite
 - Tailwind CSS
 - React Router DOM
+- React Context API
+- SVG Charts
 - Vercel (Deployment)
 
 ## ✨ Features
-- Clean dark cyber UI
-- Trending gaming clips feed
-- Lo-fi music library
-- Search and filter by game and genre
-- 3 step upload flow
-- User profile with stats
+- Dark/Light mode toggle
+- Mobile responsive with hamburger menu
+- Page loader animation
 - Smooth scroll to top on navigation
-- Custom 404 page
+- Comment modal on clip cards
+- Like toggle on clips
+- Follow button on profiles
+- Search across clips, creators and music
+- Notification filters
+- Analytics with SVG charts
+- 3 step upload flow
+- Settings with toggle switches
 
 ## 👨‍💻 Developer
-**Aman Pathan** — [GitHub](https://github.com/Amanulla4) | [LinkedIn](https://linkedin.com/in/amanulla-pathan)
+**Aman Pathan** — [GitHub](https://github.com/Amanulla4) | [LinkedIn](https://linkedin.com/in/amanulla-pathan) | [Portfolio](https://amanulla-pathan.github.io)

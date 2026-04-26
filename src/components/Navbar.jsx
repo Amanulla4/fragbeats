@@ -22,6 +22,7 @@ function Navbar() {
   const navLinks = [
     { label: 'Explore', path: '/explore' },
     { label: 'Music', path: '/music' },
+    { label: '🏆', path: '/leaderboard' },
     { label: 'Profile', path: '/profile' },
     { label: '🔍', path: '/search' },
     { label: '🔔', path: '/notifications' },

@@ -27,6 +27,7 @@ function Navbar() {
     { label: '📊', path: '/analytics' },
     { label: '🔍', path: '/search' },
     { label: '🔔', path: '/notifications' },
+    { label: '⚙️', path: '/settings' },
   ]
 
   return (

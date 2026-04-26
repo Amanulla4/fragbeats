@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
@@ -21,6 +22,7 @@ function Explore() {
   const [search, setSearch] = useState('')
   const [liked, setLiked] = useState([])
   const [activeComment, setActiveComment] = useState(null)
+  const navigate = useNavigate()
 
   const toggleLike = (id) => {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
@@ -89,6 +91,7 @@ function Explore() {
               >
                 {/* Thumbnail */}
                 <div
+                  onClick={() => navigate(`/clip/${clip.id}`)}
                   className="h-36 flex items-center justify-center text-5xl relative"
                   style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`, borderBottom: `2px solid ${clip.color}33` }}
                 >

@@ -24,6 +24,7 @@ function Navbar() {
     { label: 'Music', path: '/music' },
     { label: '🏆', path: '/leaderboard' },
     { label: 'Profile', path: '/profile' },
+    { label: '📊', path: '/analytics' },
     { label: '🔍', path: '/search' },
     { label: '🔔', path: '/notifications' },
   ]

@@ -10,6 +10,7 @@ import Notifications from './pages/Notifications'
 import Search from './pages/Search'
 import Leaderboard from './pages/Leaderboard'
 import ClipDetail from './pages/ClipDetail'
+import Analytics from './pages/Analytics'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import { useState, useEffect } from 'react'
@@ -39,6 +40,7 @@ function AnimatedRoutes() {
         <Route path="/search" element={<Search />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/clip/:id" element={<ClipDetail />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

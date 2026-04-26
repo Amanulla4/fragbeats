@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import About from './pages/About'
 import Pricing from './pages/Pricing'
+import Waitlist from './pages/Waitlist'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import { useState, useEffect } from 'react'
@@ -47,6 +48,7 @@ function AnimatedRoutes() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
+        <Route path="/waitlist" element={<Waitlist />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

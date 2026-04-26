@@ -1,0 +1,37 @@
+{
+  "name": "FragBeats",
+  "short_name": "FragBeats",
+  "description": "Game. Edit. Vibe. The home for gaming clips and lo-fi music.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#040810",
+  "theme_color": "#00f5ff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "games", "music"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Explore Clips",
+      "url": "/explore",
+      "description": "Browse gaming clips"
+    },
+    {
+      "name": "Upload Clip",
+      "url": "/upload",
+      "description": "Upload your gaming clip"
+    },
+    {
+      "name": "Music Library",
+      "url": "/music",
+      "description": "Browse lo-fi tracks"
+    }
+  ]
+}

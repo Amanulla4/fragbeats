@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
+import ShareModal from '../components/ShareModal'
 
 const COMMENTS = [
   { id: 1, user: '@neonwolf99', text: 'Bro that clutch was insane! 🔥', time: '2m ago' },
@@ -23,6 +24,9 @@ function ClipDetail() {
   const [comments, setComments] = useState(COMMENTS)
   const [newComment, setNewComment] = useState('')
   const [following, setFollowing] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+
+  const clip = { id: 1, game: 'BGMI', creator: '@fragkingAman' }
 
   const handleComment = () => {
     if (!newComment.trim()) return
@@ -54,7 +58,6 @@ function ClipDetail() {
                   ▶
                 </div>
               </div>
-              {/* Music bar */}
               <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-3">
                 <span className="text-lg">🎵</span>
                 <div className="flex-1">
@@ -89,9 +92,12 @@ function ClipDetail() {
                     onClick={() => setLiked(!liked)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${liked ? 'border-pink-400 text-pink-400 bg-pink-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'}`}
                   >
-                    {liked ? '❤️' : '🤍'} {liked ? '4.2K' : '4.2K'}
+                    {liked ? '❤️' : '🤍'} 4.2K
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200">
+                  <button
+                    onClick={() => setShareOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200"
+                  >
                     🔗 Share
                   </button>
                 </div>
@@ -124,7 +130,6 @@ function ClipDetail() {
                 COMMENTS ({comments.length})
               </h3>
 
-              {/* Add Comment */}
               <div className="flex gap-3 mb-6">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">
                   🎮
@@ -148,7 +153,6 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* Comments List */}
               <div className="flex flex-col gap-4">
                 {comments.map(comment => (
                   <div key={comment.id} className="flex gap-3">
@@ -207,6 +211,14 @@ function ClipDetail() {
 
         </div>
       </div>
+
+      {shareOpen && (
+        <ShareModal
+          clip={clip}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+
       <Footer />
     </div>
   )

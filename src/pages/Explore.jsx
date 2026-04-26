@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
+import ShareModal from '../components/ShareModal'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
@@ -22,6 +23,7 @@ function Explore() {
   const [search, setSearch] = useState('')
   const [liked, setLiked] = useState([])
   const [activeComment, setActiveComment] = useState(null)
+  const [activeShare, setActiveShare] = useState(null)
   const navigate = useNavigate()
 
   const toggleLike = (id) => {
@@ -69,8 +71,7 @@ function Explore() {
               onClick={() => setActiveGame(game)}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${activeGame === game
                 ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
-                : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'
-                }`}
+                : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'}`}
               style={{ fontFamily: 'monospace' }}
             >
               {game}
@@ -123,6 +124,12 @@ function Explore() {
                       >
                         💬
                       </button>
+                      <button
+                        onClick={() => setActiveShare(clip)}
+                        className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
+                      >
+                        🔗
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -143,6 +150,13 @@ function Explore() {
         <CommentModal
           clip={activeComment}
           onClose={() => setActiveComment(null)}
+        />
+      )}
+
+      {activeShare && (
+        <ShareModal
+          clip={activeShare}
+          onClose={() => setActiveShare(null)}
         />
       )}
 

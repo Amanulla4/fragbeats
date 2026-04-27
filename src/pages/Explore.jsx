@@ -1,10 +1,11 @@
-import { useState , useEffect} from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
 import ShareModal from '../components/ShareModal'
 import { SkeletonGrid } from '../components/SkeletonCard'
+
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
 const CLIPS = [
@@ -24,13 +25,35 @@ function Explore() {
   const [liked, setLiked] = useState([])
   const [activeComment, setActiveComment] = useState(null)
   const [activeShare, setActiveShare] = useState(null)
-const navigate = useNavigate()
-const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(4)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const loaderRef = useRef(null)
+  const navigate = useNavigate()
 
-useEffect(() => {
-  const timer = setTimeout(() => setIsLoading(false), 1500)
-  return () => clearTimeout(timer)
-}, [])
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 1500)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const loadMore = useCallback(() => {
+    if (loadingMore) return
+    setLoadingMore(true)
+    setTimeout(() => {
+      setVisibleCount(prev => prev + 4)
+      setLoadingMore(false)
+    }, 800)
+  }, [loadingMore])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => { if (entries[0].isIntersecting) loadMore() },
+      { threshold: 0.1 }
+    )
+    if (loaderRef.current) observer.observe(loaderRef.current)
+    return () => observer.disconnect()
+  }, [loadMore])
+
   const toggleLike = (id) => {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
   }
@@ -47,7 +70,7 @@ useEffect(() => {
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
 
-      <div className="max-w-6xl mx-auto px-8 pt-32 pb-16">
+      <div className="max-w-6xl mx-auto px-8 pt-32 pb-32">
 
         {/* Header */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// EXPLORE</p>
@@ -88,62 +111,78 @@ useEffect(() => {
         <p className="text-slate-500 text-sm mb-6">{filtered.length} clips found</p>
 
         {/* Clips Grid */}
-        {/* Clips Grid */}
-{isLoading ? (
-  <SkeletonGrid count={8} />
-) : filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {filtered.map(clip => (
-              <div
-                key={clip.id}
-                className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
-              >
-                {/* Thumbnail */}
+        {isLoading ? (
+          <SkeletonGrid count={8} />
+        ) : filtered.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {filtered.slice(0, visibleCount).map(clip => (
                 <div
-                  onClick={() => navigate(`/clip/${clip.id}`)}
-                  className="h-36 flex items-center justify-center text-5xl relative"
-                  style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`, borderBottom: `2px solid ${clip.color}33` }}
+                  key={clip.id}
+                  className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
                 >
-                  {clip.emoji}
-                  <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
-                    ▶
+                  {/* Thumbnail */}
+                  <div
+                    onClick={() => navigate(`/clip/${clip.id}`)}
+                    className="h-36 flex items-center justify-center text-5xl relative"
+                    style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`, borderBottom: `2px solid ${clip.color}33` }}
+                  >
+                    {clip.emoji}
+                    <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
+                      ▶
+                    </div>
                   </div>
-                </div>
 
-                {/* Info */}
-                <div className="p-4">
-                  <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color }}>
-                    {clip.game}
-                  </div>
-                  <div className="text-white text-sm font-bold mb-1">{clip.creator}</div>
-                  <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-xs">👁 {clip.views}</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => toggleLike(clip.id)}
-                        className={`text-xs transition-all duration-200 ${liked.includes(clip.id) ? 'text-pink-400' : 'text-slate-500 hover:text-pink-400'}`}
-                      >
-                        {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes}
-                      </button>
-                      <button
-                        onClick={() => setActiveComment(clip)}
-                        className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
-                      >
-                        💬
-                      </button>
-                      <button
-                        onClick={() => setActiveShare(clip)}
-                        className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
-                      >
-                        🔗
-                      </button>
+                  {/* Info */}
+                  <div className="p-4">
+                    <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color }}>
+                      {clip.game}
+                    </div>
+                    <div className="text-white text-sm font-bold mb-1">{clip.creator}</div>
+                    <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 text-xs">👁 {clip.views}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => toggleLike(clip.id)}
+                          className={`text-xs transition-all duration-200 ${liked.includes(clip.id) ? 'text-pink-400' : 'text-slate-500 hover:text-pink-400'}`}
+                        >
+                          {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes}
+                        </button>
+                        <button
+                          onClick={() => setActiveComment(clip)}
+                          className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
+                        >
+                          💬
+                        </button>
+                        <button
+                          onClick={() => setActiveShare(clip)}
+                          className="text-xs text-slate-500 hover:text-cyan-400 transition-all duration-200"
+                        >
+                          🔗
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Infinite scroll loader */}
+            {visibleCount < filtered.length && (
+              <div ref={loaderRef} className="mt-8 text-center">
+                {loadingMore ? (
+                  <div className="flex justify-center gap-2">
+                    <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-xs tracking-widest uppercase">Scroll for more</p>
+                )}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">🔍</div>

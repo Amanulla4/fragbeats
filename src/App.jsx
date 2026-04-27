@@ -19,6 +19,7 @@ import Terms from './pages/Terms'
 import Blog from './pages/Blog'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
+import MusicPlayer from './components/MusicPlayer'
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
@@ -35,6 +36,7 @@ function AnimatedRoutes() {
   return (
     <>
       {loading && <PageLoader />}
+      <MusicPlayer />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />

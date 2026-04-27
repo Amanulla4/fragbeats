@@ -78,14 +78,15 @@ function Footer() {
             © 2025 FragBeats. Built for gamers, by gamers.
           </div>
           <div className="flex gap-6">
-            {['Privacy', 'Terms'].map(link => (
-              <span
-                key={link}
-                className="text-slate-500 text-sm cursor-pointer hover:text-cyan-400 transition-colors duration-200"
-              >
-                {link}
-              </span>
-            ))}
+            {[['Privacy', '/terms'], ['Terms', '/terms']].map(([label, path]) => (
+  <span
+    key={label}
+    onClick={() => navigate(path)}
+    className="text-slate-500 text-sm cursor-pointer hover:text-cyan-400 transition-colors duration-200"
+  >
+    {label}
+  </span>
+))}
           </div>
         </div>
 

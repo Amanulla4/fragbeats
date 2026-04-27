@@ -54,11 +54,12 @@ function Footer() {
               </div>
               <div className="flex flex-col gap-2">
                 {[
-                  ['About', '/about'],
-                  ['Pricing', '/pricing'],
-                  ['Waitlist', '/waitlist'],
-                  ['Contact', '/about'],
-                ].map(([label, path]) => (
+  ['About', '/about'],
+  ['Blog', '/blog'],
+  ['Pricing', '/pricing'],
+  ['Waitlist', '/waitlist'],
+  ['Contact', '/about'],
+].map(([label, path]) => (
                   <span
                     key={label}
                     onClick={() => navigate(path)}

@@ -16,6 +16,7 @@ import About from './pages/About'
 import Pricing from './pages/Pricing'
 import Waitlist from './pages/Waitlist'
 import Terms from './pages/Terms'
+import Blog from './pages/Blog'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import { useState, useEffect } from 'react'
@@ -51,6 +52,7 @@ function AnimatedRoutes() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/waitlist" element={<Waitlist />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/blog" element={<Blog />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

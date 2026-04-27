@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState , useEffect} from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
 import ShareModal from '../components/ShareModal'
-
+import { SkeletonGrid } from '../components/SkeletonCard'
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
 const CLIPS = [
@@ -24,8 +24,13 @@ function Explore() {
   const [liked, setLiked] = useState([])
   const [activeComment, setActiveComment] = useState(null)
   const [activeShare, setActiveShare] = useState(null)
-  const navigate = useNavigate()
+const navigate = useNavigate()
+const [isLoading, setIsLoading] = useState(true)
 
+useEffect(() => {
+  const timer = setTimeout(() => setIsLoading(false), 1500)
+  return () => clearTimeout(timer)
+}, [])
   const toggleLike = (id) => {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
   }
@@ -83,7 +88,10 @@ function Explore() {
         <p className="text-slate-500 text-sm mb-6">{filtered.length} clips found</p>
 
         {/* Clips Grid */}
-        {filtered.length > 0 ? (
+        {/* Clips Grid */}
+{isLoading ? (
+  <SkeletonGrid count={8} />
+) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {filtered.map(clip => (
               <div

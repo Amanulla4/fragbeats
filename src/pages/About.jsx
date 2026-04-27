@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
 const TEAM = [
-  { name: 'Aman Pathan', role: 'Founder & Developer', bio: 'BCA fresher from Latur building the future of gaming content. BGMI Conqueror 🏆', emoji: '🎮', social: 'fragkingAman' },
+  { name: 'Aman Pathan', role: 'Founder & Developer', bio: 'Started as a gamer. Became a developer. Now building the platform I always wished existed. FragBeats is just the beginning 🔥', emoji: '🎮', social: 'fragkingAman' },
 ]
 
 const VALUES = [

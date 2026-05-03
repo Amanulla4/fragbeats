@@ -2,6 +2,8 @@ import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 const GAMES = ['BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V', 'Other']
 
@@ -14,8 +16,14 @@ const MUSIC_TRACKS = [
   { id: 6, name: 'Deep Focus', duration: '5:01' },
 ]
 
+const gameEmojis = {
+  'BGMI': '🎮', 'Valorant': '🔫', 'Free Fire': '🔥',
+  'COD Mobile': '💀', 'GTA V': '🚗', 'Other': '🎯'
+}
+
 function Upload() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [step, setStep] = useState(1)
   const [dragging, setDragging] = useState(false)
   const [uploaded, setUploaded] = useState(false)
@@ -23,6 +31,7 @@ function Upload() {
   const [selectedTrack, setSelectedTrack] = useState(null)
   const [title, setTitle] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const handleDrop = (e) => {
     e.preventDefault()
@@ -30,7 +39,27 @@ function Upload() {
     setUploaded(true)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!selectedTrack) return
+    setSaving(true)
+
+    const selectedTrackData = MUSIC_TRACKS.find(t => t.id === selectedTrack)
+
+    const { error } = await supabase.from('clips').insert({
+      title: title || 'Untitled Clip',
+      game: selectedGame,
+      music: selectedTrackData?.name || 'Unknown',
+      emoji: gameEmojis[selectedGame] || '🎮',
+      views: 0,
+      likes: 0,
+      user_id: user?.id,
+    })
+
+    if (error) {
+      console.error('Error saving clip:', error)
+    }
+
+    setSaving(false)
     setSubmitted(true)
     setTimeout(() => navigate('/explore'), 3000)
   }
@@ -79,7 +108,7 @@ function Upload() {
           </span>
         </div>
 
-        {/* STEP 1 - Upload */}
+        {/* STEP 1 */}
         {step === 1 && (
           <div>
             <div
@@ -115,10 +144,9 @@ function Upload() {
           </div>
         )}
 
-        {/* STEP 2 - Details */}
+        {/* STEP 2 */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
-
             <div>
               <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Clip Title</label>
               <input
@@ -165,7 +193,7 @@ function Upload() {
           </div>
         )}
 
-        {/* STEP 3 - Music */}
+        {/* STEP 3 */}
         {step === 3 && (
           <div>
             <p className="text-slate-400 text-sm mb-6">Choose a lo-fi track for your clip 🎵</p>
@@ -198,10 +226,11 @@ function Upload() {
               </button>
               <button
                 onClick={() => selectedTrack && handleSubmit()}
+                disabled={saving}
                 className={`flex-1 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${selectedTrack ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
                 style={{ fontFamily: 'monospace' }}
               >
-                UPLOAD FRAG 🔥
+                {saving ? 'SAVING...' : 'UPLOAD FRAG 🔥'}
               </button>
             </div>
           </div>

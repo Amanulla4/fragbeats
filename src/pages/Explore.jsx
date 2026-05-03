@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
 import ShareModal from '../components/ShareModal'
 import { SkeletonGrid } from '../components/SkeletonCard'
+import { supabase } from '../lib/supabase'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
@@ -28,12 +29,31 @@ function Explore() {
   const [isLoading, setIsLoading] = useState(true)
   const [visibleCount, setVisibleCount] = useState(4)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [realClips, setRealClips] = useState([])
   const loaderRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1500)
-    return () => clearTimeout(timer)
+    const fetchClips = async () => {
+      const { data, error } = await supabase
+        .from('clips')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!error && data && data.length > 0) {
+        const colors = ['#00f5ff', '#bf00ff', '#ff6b35']
+        const formattedClips = data.map((clip, i) => ({
+          ...clip,
+          creator: '@user',
+          views: clip.views || '0',
+          likes: clip.likes || '0',
+          color: colors[i % colors.length],
+        }))
+        setRealClips(formattedClips)
+      }
+      setIsLoading(false)
+    }
+    fetchClips()
   }, [])
 
   const loadMore = useCallback(() => {
@@ -58,7 +78,9 @@ function Explore() {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
   }
 
-  const filtered = CLIPS.filter(clip => {
+  const allClips = realClips.length > 0 ? realClips : CLIPS
+
+  const filtered = allClips.filter(clip => {
     const matchGame = activeGame === 'All' || clip.game === activeGame
     const matchSearch = clip.creator.toLowerCase().includes(search.toLowerCase()) ||
       clip.game.toLowerCase().includes(search.toLowerCase()) ||
@@ -72,13 +94,11 @@ function Explore() {
 
       <div className="max-w-6xl mx-auto px-8 pt-32 pb-32">
 
-        {/* Header */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// EXPLORE</p>
         <h1 className="font-black text-4xl md:text-5xl text-white mb-8" style={{ fontFamily: 'monospace' }}>
           Find Your Vibe 🎮
         </h1>
 
-        {/* Search Bar */}
         <div className="relative mb-6">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           <input
@@ -91,7 +111,6 @@ function Explore() {
           />
         </div>
 
-        {/* Game Filters */}
         <div className="flex gap-3 flex-wrap mb-10">
           {GAMES.map(game => (
             <button
@@ -107,10 +126,8 @@ function Explore() {
           ))}
         </div>
 
-        {/* Results count */}
         <p className="text-slate-500 text-sm mb-6">{filtered.length} clips found</p>
 
-        {/* Clips Grid */}
         {isLoading ? (
           <SkeletonGrid count={8} />
         ) : filtered.length > 0 ? (
@@ -121,7 +138,6 @@ function Explore() {
                   key={clip.id}
                   className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
                 >
-                  {/* Thumbnail */}
                   <div
                     onClick={() => navigate(`/clip/${clip.id}`)}
                     className="h-36 flex items-center justify-center text-5xl relative"
@@ -133,12 +149,11 @@ function Explore() {
                     </div>
                   </div>
 
-                  {/* Info */}
                   <div className="p-4">
                     <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color }}>
                       {clip.game}
                     </div>
-                    <div className="text-white text-sm font-bold mb-1">{clip.creator}</div>
+                    <div className="text-white text-sm font-bold mb-1">{clip.title || clip.creator}</div>
                     <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-500 text-xs">👁 {clip.views}</span>
@@ -168,7 +183,6 @@ function Explore() {
               ))}
             </div>
 
-            {/* Infinite scroll loader */}
             {visibleCount < filtered.length && (
               <div ref={loaderRef} className="mt-8 text-center">
                 {loadingMore ? (
@@ -194,17 +208,11 @@ function Explore() {
       </div>
 
       {activeComment && (
-        <CommentModal
-          clip={activeComment}
-          onClose={() => setActiveComment(null)}
-        />
+        <CommentModal clip={activeComment} onClose={() => setActiveComment(null)} />
       )}
 
       {activeShare && (
-        <ShareModal
-          clip={activeShare}
-          onClose={() => setActiveShare(null)}
-        />
+        <ShareModal clip={activeShare} onClose={() => setActiveShare(null)} />
       )}
 
       <Footer />

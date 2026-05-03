@@ -1,10 +1,43 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true)
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const navigate = useNavigate()
+
+  const handleSubmit = async () => {
+    setError('')
+    setSuccess('')
+    setLoading(true)
+
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password })
+        if (error) throw error
+        setSuccess('Login successful! 🎮')
+        setTimeout(() => navigate('/explore'), 1000)
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password })
+        if (error) throw error
+        setSuccess('Account created! Welcome to FragBeats 🔥')
+        setTimeout(() => navigate('/explore'), 1000)
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+    <div className="min-h-screen bg-[#040810] flex items-center justify-center px-4 relative overflow-hidden">
 
       {/* Background Gradients */}
       <div className="absolute inset-0 pointer-events-none">
@@ -49,44 +82,63 @@ function Auth() {
           </button>
         </div>
 
+        {/* Error/Success */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-4">
+            ❌ {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3 text-green-400 text-sm mb-4">
+            ✅ {success}
+          </div>
+        )}
+
         {/* Form */}
         <div className="flex flex-col gap-4">
 
-          {/* Name field - only on signup */}
           {!isLogin && (
             <div>
               <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Username</label>
               <input
                 type="text"
                 placeholder="your_gamer_tag"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
                 className="w-full bg-[#040810] border border-cyan-500/20 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
               />
             </div>
           )}
 
-          {/* Email */}
           <div>
             <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Email</label>
             <input
               type="email"
               placeholder="you@example.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
               className="w-full bg-[#040810] border border-cyan-500/20 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
             />
           </div>
 
-          {/* Password */}
           <div>
             <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Password</label>
             <input
               type="password"
               placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
               className="w-full bg-[#040810] border border-cyan-500/20 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
             />
           </div>
 
-          {/* Submit Button */}
-          <button className="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black py-3 rounded-lg font-black text-sm tracking-widest hover:brightness-110 hover:-translate-y-1 transition-all duration-300 mt-2" style={{ fontFamily: 'monospace' }}>
-            {isLogin ? 'LOGIN →' : 'CREATE ACCOUNT →'}
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-cyan-400 to-purple-500 text-black py-3 rounded-lg font-black text-sm tracking-widest hover:brightness-110 hover:-translate-y-1 transition-all duration-300 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ fontFamily: 'monospace' }}
+          >
+            {loading ? 'LOADING...' : isLogin ? 'LOGIN →' : 'CREATE ACCOUNT →'}
           </button>
 
         </div>

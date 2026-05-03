@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Explore from './pages/Explore'
@@ -20,8 +22,7 @@ import Blog from './pages/Blog'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import MusicPlayer from './components/MusicPlayer'
-import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import ProtectedRoute from './components/ProtectedRoute'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -41,15 +42,15 @@ function AnimatedRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/explore" element={<Explore />} />
-        <Route path="/upload" element={<Upload />} />
+        <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/music" element={<Music />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/search" element={<Search />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/clip/:id" element={<ClipDetail />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/waitlist" element={<Waitlist />} />

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
+import { useAuth } from '../context/AuthContext'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
+  const { user, signOut } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
@@ -17,6 +19,11 @@ function Navbar() {
   const handleNavClick = (path) => {
     navigate(path)
     setMenuOpen(false)
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/')
   }
 
   const navLinks = [
@@ -54,12 +61,29 @@ function Navbar() {
           <button onClick={toggleTheme} className="w-10 h-10 rounded-full border border-cyan-500/20 flex items-center justify-center text-lg hover:border-cyan-400 transition-all duration-200">
             {isDark ? '☀️' : '🌙'}
           </button>
-          <button onClick={() => handleNavClick('/upload')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
-            Upload
-          </button>
-          <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-2 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
-            JOIN FREE
-          </button>
+
+          {user ? (
+            <>
+              <div className="text-slate-400 text-xs tracking-widest hidden lg:block">
+                {user.email?.split('@')[0]}
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="border border-red-500/30 text-red-400 px-5 py-2 rounded text-sm tracking-widest hover:border-red-400 hover:text-red-300 transition-all duration-200 bg-transparent"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
+                Log In
+              </button>
+              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-2 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
+                JOIN FREE
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex md:hidden gap-3 items-center">
@@ -88,12 +112,23 @@ function Navbar() {
               {link.label}
             </span>
           ))}
-          <button onClick={() => handleNavClick('/upload')} className="border border-cyan-500/20 text-slate-400 px-5 py-3 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent text-left">
-            Upload
-          </button>
-          <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-3 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
-            JOIN FREE
-          </button>
+          {user ? (
+            <button
+              onClick={handleSignOut}
+              className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left"
+            >
+              Logout
+            </button>
+          ) : (
+            <>
+              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-3 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent text-left">
+                Log In
+              </button>
+              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-3 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
+                JOIN FREE
+              </button>
+            </>
+          )}
         </div>
       )}
     </>

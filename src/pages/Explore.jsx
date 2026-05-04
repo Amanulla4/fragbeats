@@ -9,16 +9,14 @@ import { supabase } from '../lib/supabase'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V']
 
-const CLIPS = [
-  { id: 1, game: 'BGMI', creator: '@fragkingAman', music: 'Chill Lo-fi Vol.3', views: '128K', likes: '4.2K', emoji: '🎮', color: '#00f5ff' },
-  { id: 2, game: 'Valorant', creator: '@neonwolf99', music: 'Midnight Vibes', views: '94K', likes: '3.1K', emoji: '🔫', color: '#bf00ff' },
-  { id: 3, game: 'Free Fire', creator: '@drip_editz', music: 'Synthwave Dreams', views: '211K', likes: '8.7K', emoji: '🔥', color: '#ff6b35' },
-  { id: 4, game: 'COD Mobile', creator: '@ghostfrags', music: 'Rain & Bass', views: '76K', likes: '2.9K', emoji: '💀', color: '#00f5ff' },
-  { id: 5, game: 'GTA V', creator: '@cityvibes', music: 'Urban Lo-fi', views: '143K', likes: '5.3K', emoji: '🚗', color: '#bf00ff' },
-  { id: 6, game: 'BGMI', creator: '@sniperking', music: 'Deep Focus', views: '89K', likes: '3.8K', emoji: '🎯', color: '#00f5ff' },
-  { id: 7, game: 'Valorant', creator: '@flashpoint', music: 'Neon Nights', views: '167K', likes: '6.1K', emoji: '⚡', color: '#bf00ff' },
-  { id: 8, game: 'Free Fire', creator: '@blazeshot', music: 'Fire Beats', views: '55K', likes: '1.9K', emoji: '💥', color: '#ff6b35' },
-]
+const gameColors = {
+  'BGMI': '#00f5ff',
+  'Valorant': '#bf00ff',
+  'Free Fire': '#ff6b35',
+  'COD Mobile': '#ff2d55',
+  'GTA V': '#ffd700',
+  'Other': '#00f5ff'
+}
 
 function Explore() {
   const [activeGame, setActiveGame] = useState('All')
@@ -27,34 +25,32 @@ function Explore() {
   const [activeComment, setActiveComment] = useState(null)
   const [activeShare, setActiveShare] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [visibleCount, setVisibleCount] = useState(4)
+  const [visibleCount, setVisibleCount] = useState(8)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [realClips, setRealClips] = useState([])
+  const [clips, setClips] = useState([])
   const loaderRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchClips = async () => {
-      const { data, error } = await supabase
-        .from('clips')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (!error && data && data.length > 0) {
-        const colors = ['#00f5ff', '#bf00ff', '#ff6b35']
-        const formattedClips = data.map((clip, i) => ({
-          ...clip,
-          creator: '@user',
-          views: clip.views || '0',
-          likes: clip.likes || '0',
-          color: colors[i % colors.length],
-        }))
-        setRealClips(formattedClips)
-      }
-      setIsLoading(false)
-    }
     fetchClips()
   }, [])
+
+  async function fetchClips() {
+    const { data, error } = await supabase
+      .from('clips')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (!error && data) {
+      // Use real color from DB, fallback to gameColors map if missing
+      const formatted = data.map(clip => ({
+        ...clip,
+        color: clip.color || gameColors[clip.game] || '#00f5ff',
+      }))
+      setClips(formatted)
+    }
+    setIsLoading(false)
+  }
 
   const loadMore = useCallback(() => {
     if (loadingMore) return
@@ -78,13 +74,12 @@ function Explore() {
     setLiked(prev => prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id])
   }
 
-  const allClips = realClips.length > 0 ? realClips : CLIPS
-
-  const filtered = allClips.filter(clip => {
+  const filtered = clips.filter(clip => {
     const matchGame = activeGame === 'All' || clip.game === activeGame
-    const matchSearch = clip.creator.toLowerCase().includes(search.toLowerCase()) ||
-      clip.game.toLowerCase().includes(search.toLowerCase()) ||
-      clip.music.toLowerCase().includes(search.toLowerCase())
+    const matchSearch =
+      (clip.title || '').toLowerCase().includes(search.toLowerCase()) ||
+      (clip.game || '').toLowerCase().includes(search.toLowerCase()) ||
+      (clip.music || '').toLowerCase().includes(search.toLowerCase())
     return matchGame && matchSearch
   })
 
@@ -99,11 +94,12 @@ function Explore() {
           Find Your Vibe 🎮
         </h1>
 
+        {/* Search */}
         <div className="relative mb-6">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           <input
             type="text"
-            placeholder="Search by game, creator or music..."
+            placeholder="Search by game, title or music..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full border border-cyan-500/20 rounded-lg pl-12 pr-4 py-3 text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
@@ -111,14 +107,17 @@ function Explore() {
           />
         </div>
 
+        {/* Game Filters */}
         <div className="flex gap-3 flex-wrap mb-10">
           {GAMES.map(game => (
             <button
               key={game}
               onClick={() => setActiveGame(game)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${activeGame === game
-                ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
-                : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${
+                activeGame === game
+                  ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
+                  : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'
+              }`}
               style={{ fontFamily: 'monospace' }}
             >
               {game}
@@ -141,28 +140,34 @@ function Explore() {
                   <div
                     onClick={() => navigate(`/clip/${clip.id}`)}
                     className="h-36 flex items-center justify-center text-5xl relative"
-                    style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`, borderBottom: `2px solid ${clip.color}33` }}
+                    style={{
+                      background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`,
+                      borderBottom: `2px solid ${clip.color}33`
+                    }}
                   >
-                    {clip.emoji}
+                    {clip.emoji || '🎮'}
                     <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
                       ▶
                     </div>
                   </div>
 
                   <div className="p-4">
-                    <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color }}>
+                    <div
+                      className="font-black text-xs tracking-widest mb-1"
+                      style={{ fontFamily: 'monospace', color: clip.color }}
+                    >
                       {clip.game}
                     </div>
-                    <div className="text-white text-sm font-bold mb-1">{clip.title || clip.creator}</div>
+                    <div className="text-white text-sm font-bold mb-1">{clip.title || 'Untitled Clip'}</div>
                     <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-500 text-xs">👁 {clip.views}</span>
+                      <span className="text-slate-500 text-xs">👁 {clip.views || 0}</span>
                       <div className="flex gap-2">
                         <button
                           onClick={() => toggleLike(clip.id)}
                           className={`text-xs transition-all duration-200 ${liked.includes(clip.id) ? 'text-pink-400' : 'text-slate-500 hover:text-pink-400'}`}
                         >
-                          {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes}
+                          {liked.includes(clip.id) ? '❤️' : '🤍'} {clip.likes || 0}
                         </button>
                         <button
                           onClick={() => setActiveComment(clip)}

@@ -1,32 +1,67 @@
+import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
-
-const MY_CLIPS = [
-  { id: 1, game: 'BGMI', title: 'Insane 1v4 clutch', music: 'Chill Lo-fi Vol.3', views: '128K', likes: '4.2K', emoji: '🎮', color: '#00f5ff' },
-  { id: 2, game: 'BGMI', title: 'Solo vs Squad win', music: 'Deep Focus', views: '89K', likes: '3.8K', emoji: '🎯', color: '#00f5ff' },
-  { id: 3, game: 'Free Fire', title: 'Headshot compilation', music: 'Synthwave Dreams', views: '211K', likes: '8.7K', emoji: '🔥', color: '#ff6b35' },
-]
-
-const STATS = [
-  { label: 'Clips', value: '3' },
-  { label: 'Total Views', value: '428K' },
-  { label: 'Followers', value: '1.2K' },
-  { label: 'Following', value: '348' },
-]
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 function Profile() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [clips, setClips] = useState([])
+  const [username, setUsername] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile()
+      fetchMyClips()
+    }
+  }, [user])
+
+  async function fetchProfile() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single()
+
+    if (data?.username) setUsername(data.username)
+  }
+
+  async function fetchMyClips() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('clips')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (!error) setClips(data)
+    setLoading(false)
+  }
+
+  const totalViews = clips.reduce((sum, c) => sum + (c.views || 0), 0)
+  const totalLikes = clips.reduce((sum, c) => sum + (c.likes || 0), 0)
+
+  const displayName = username || user?.email?.split('@')[0] || 'gamer'
+
+  const STATS = [
+    { label: 'Clips', value: clips.length },
+    { label: 'Total Views', value: totalViews > 999 ? (totalViews / 1000).toFixed(1) + 'K' : totalViews },
+    { label: 'Total Likes', value: totalLikes > 999 ? (totalLikes / 1000).toFixed(1) + 'K' : totalLikes },
+    { label: 'Followers', value: '0' },
+  ]
 
   return (
-<div className="min-h-screen" style={{ background: 'var(--bg)' }}>      <Navbar />
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <Navbar />
 
       <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">
 
         {/* Profile Header */}
         <div className="bg-[#0b1425] border border-cyan-500/20 rounded-xl p-8 mb-8 relative overflow-hidden">
 
-          {/* Background glow */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -40,14 +75,13 @@ function Profile() {
             {/* Info */}
             <div className="flex-1 text-center md:text-left">
               <h1 className="font-black text-2xl text-white tracking-widest mb-1" style={{ fontFamily: 'monospace' }}>
-                @fragkingAman
+                @{displayName}
               </h1>
-              <p className="text-cyan-400 text-sm mb-3 tracking-widest">BGMI • Free Fire • Lo-fi Enthusiast</p>
+              <p className="text-cyan-400 text-sm mb-3 tracking-widest">FragBeats Creator</p>
               <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-                Dropping frags and vibes since 2021. BGMI rank — Conqueror 🏆 Building FragBeats from Latur 🔥
+                {user?.email}
               </p>
 
-              {/* Action buttons */}
               <div className="flex gap-3 mt-4 justify-center md:justify-start">
                 <button
                   onClick={() => navigate('/upload')}
@@ -83,38 +117,77 @@ function Profile() {
           My Frags 🎮
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {MY_CLIPS.map(clip => (
-            <div
-              key={clip.id}
-              className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
-            >
-              {/* Thumbnail */}
-              <div
-                className="h-36 flex items-center justify-center text-5xl relative"
-                style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color}22)`, borderBottom: `2px solid ${clip.color}33` }}
-              >
-                {clip.emoji}
-                <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
-                  ▶
+        {/* Loading */}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden animate-pulse">
+                <div className="h-36 bg-cyan-500/10" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-cyan-500/10 rounded w-1/3" />
+                  <div className="h-4 bg-cyan-500/10 rounded w-2/3" />
+                  <div className="h-3 bg-cyan-500/10 rounded w-1/2" />
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              {/* Info */}
-              <div className="p-4">
-                <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color }}>
-                  {clip.game}
+        {/* No clips */}
+        {!loading && clips.length === 0 && (
+          <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
+            <div className="text-5xl mb-4">🎮</div>
+            <p className="text-slate-400 text-sm tracking-widest mb-4">NO CLIPS YET</p>
+            <button
+              onClick={() => navigate('/upload')}
+              className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-2 rounded font-black text-xs tracking-widest hover:brightness-110 transition-all"
+              style={{ fontFamily: 'monospace' }}
+            >
+              UPLOAD YOUR FIRST CLIP
+            </button>
+          </div>
+        )}
+
+        {/* Real Clips Grid */}
+        {!loading && clips.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {clips.map(clip => (
+              <div
+                key={clip.id}
+                onClick={() => navigate(`/clip/${clip.id}`)}
+                className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
+              >
+                <div
+                  className="h-36 flex items-center justify-center text-5xl relative"
+                  style={{
+                    background: `linear-gradient(135deg, #0b1425, ${clip.color || '#00f5ff'}22)`,
+                    borderBottom: `2px solid ${clip.color || '#00f5ff'}33`
+                  }}
+                >
+                  {clip.emoji || '🎮'}
+                  <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
+                    ▶
+                  </div>
                 </div>
-                <div className="text-white text-sm font-bold mb-1">{clip.title}</div>
-                <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 text-xs">👁 {clip.views}</span>
-                  <span className="text-slate-500 text-xs">❤️ {clip.likes}</span>
+
+                <div className="p-4">
+                  <div
+                    className="font-black text-xs tracking-widest mb-1"
+                    style={{ fontFamily: 'monospace', color: clip.color || '#00f5ff' }}
+                  >
+                    {clip.game}
+                  </div>
+                  <div className="text-white text-sm font-bold mb-1">{clip.title}</div>
+                  <div className="text-slate-500 text-xs mb-3">🎵 {clip.music}</div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 text-xs">👁 {clip.views || 0}</span>
+                    <span className="text-slate-500 text-xs">❤️ {clip.likes || 0}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
       </div>
       <Footer />

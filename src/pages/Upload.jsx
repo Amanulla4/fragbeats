@@ -21,6 +21,15 @@ const gameEmojis = {
   'COD Mobile': '💀', 'GTA V': '🚗', 'Other': '🎯'
 }
 
+const gameColors = {
+  'BGMI': '#00f5ff',
+  'Valorant': '#bf00ff',
+  'Free Fire': '#ff6b35',
+  'COD Mobile': '#ff2d55',
+  'GTA V': '#ffd700',
+  'Other': '#00f5ff'
+}
+
 function Upload() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -50,6 +59,7 @@ function Upload() {
       game: selectedGame,
       music: selectedTrackData?.name || 'Unknown',
       emoji: gameEmojis[selectedGame] || '🎮',
+      color: gameColors[selectedGame] || '#00f5ff',
       views: 0,
       likes: 0,
       user_id: user?.id,
@@ -96,8 +106,10 @@ function Upload() {
         <div className="flex items-center gap-3 mb-10">
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step >= s ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-500'}`}
-                style={{ fontFamily: 'monospace' }}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${step >= s ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-500'}`}
+                style={{ fontFamily: 'monospace' }}
+              >
                 {s}
               </div>
               {s < 3 && <div className={`h-px w-12 transition-all duration-300 ${step > s ? 'bg-cyan-400' : 'bg-cyan-500/20'}`} />}
@@ -166,12 +178,20 @@ function Upload() {
                     key={game}
                     onClick={() => setSelectedGame(game)}
                     className={`py-2 px-3 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${selectedGame === game ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400'}`}
-                    style={{ fontFamily: 'monospace' }}
+                    style={{
+                      fontFamily: 'monospace',
+                      borderColor: selectedGame === game ? gameColors[game] : undefined
+                    }}
                   >
-                    {game}
+                    {gameEmojis[game]} {game}
                   </button>
                 ))}
               </div>
+              {selectedGame && (
+                <p className="text-xs mt-3 tracking-widest" style={{ color: gameColors[selectedGame] }}>
+                  {gameEmojis[selectedGame]} {selectedGame} selected
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 mt-2">

@@ -24,8 +24,22 @@ function Auth() {
         setSuccess('Login successful! 🎮')
         setTimeout(() => navigate('/explore'), 1000)
       } else {
-        const { error } = await supabase.auth.signUp({ email, password })
+        if (!username.trim()) throw new Error('Username is required')
+
+        const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
+
+        // Save username to profiles table
+        if (data?.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              username: username.trim().toLowerCase().replace(/\s+/g, '_'),
+            })
+          if (profileError) console.error('Profile save error:', profileError)
+        }
+
         setSuccess('Account created! Welcome to FragBeats 🔥')
         setTimeout(() => navigate('/explore'), 1000)
       }
@@ -67,14 +81,14 @@ function Auth() {
         {/* Toggle */}
         <div className="flex bg-[#040810] rounded-lg p-1 mb-8">
           <button
-            onClick={() => setIsLogin(true)}
+            onClick={() => { setIsLogin(true); setError(''); setSuccess('') }}
             className={`flex-1 py-2 rounded-md text-sm font-bold tracking-widest transition-all duration-300 ${isLogin ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'text-slate-400 hover:text-white'}`}
             style={{ fontFamily: 'monospace' }}
           >
             LOGIN
           </button>
           <button
-            onClick={() => setIsLogin(false)}
+            onClick={() => { setIsLogin(false); setError(''); setSuccess('') }}
             className={`flex-1 py-2 rounded-md text-sm font-bold tracking-widest transition-all duration-300 ${!isLogin ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'text-slate-400 hover:text-white'}`}
             style={{ fontFamily: 'monospace' }}
           >
@@ -107,6 +121,7 @@ function Auth() {
                 onChange={e => setUsername(e.target.value)}
                 className="w-full bg-[#040810] border border-cyan-500/20 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
               />
+              <p className="text-slate-600 text-xs mt-1">Spaces will be replaced with underscores</p>
             </div>
           )}
 
@@ -128,6 +143,7 @@ function Auth() {
               placeholder="••••••••"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               className="w-full bg-[#040810] border border-cyan-500/20 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
             />
           </div>
@@ -147,7 +163,7 @@ function Auth() {
         <p className="text-center text-slate-500 text-xs mt-6">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <span
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess('') }}
             className="text-cyan-400 cursor-pointer hover:underline"
           >
             {isLogin ? 'Sign Up' : 'Login'}

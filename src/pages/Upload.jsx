@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
@@ -33,45 +33,104 @@ const gameColors = {
 function Upload() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const fileInputRef = useRef(null)
+
   const [step, setStep] = useState(1)
   const [dragging, setDragging] = useState(false)
-  const [uploaded, setUploaded] = useState(false)
+  const [videoFile, setVideoFile] = useState(null)
   const [selectedGame, setSelectedGame] = useState('')
   const [selectedTrack, setSelectedTrack] = useState(null)
   const [title, setTitle] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState('')
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragging(false)
-    setUploaded(true)
+  function handleFileSelect(file) {
+    if (!file) return
+    if (!file.type.startsWith('video/')) {
+      setError('Please upload a video file (MP4, MOV)')
+      return
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      setError('File too large. Max size is 500MB')
+      return
+    }
+    setError('')
+    setVideoFile(file)
   }
 
-  const handleSubmit = async () => {
-    if (!selectedTrack) return
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    handleFileSelect(file)
+  }
+
+  function handleFileInput(e) {
+    const file = e.target.files[0]
+    handleFileSelect(file)
+  }
+
+  async function handleSubmit() {
+    if (!selectedTrack || !videoFile) return
     setSaving(true)
+    setError('')
 
-    const selectedTrackData = MUSIC_TRACKS.find(t => t.id === selectedTrack)
+    try {
+      // 1. Upload video to Supabase Storage
+      const fileExt = videoFile.name.split('.').pop()
+      const fileName = `${user.id}_${Date.now()}.${fileExt}`
 
-    const { error } = await supabase.from('clips').insert({
-      title: title || 'Untitled Clip',
-      game: selectedGame,
-      music: selectedTrackData?.name || 'Unknown',
-      emoji: gameEmojis[selectedGame] || '🎮',
-      color: gameColors[selectedGame] || '#00f5ff',
-      views: 0,
-      likes: 0,
-      user_id: user?.id,
-    })
+      setUploadProgress(20)
 
-    if (error) {
-      console.error('Error saving clip:', error)
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('clips')
+        .upload(fileName, videoFile, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (storageError) throw storageError
+
+      setUploadProgress(70)
+
+      // 2. Get public URL
+      const { data: urlData } = supabase.storage
+        .from('clips')
+        .getPublicUrl(fileName)
+
+      const videoUrl = urlData.publicUrl
+
+      setUploadProgress(90)
+
+      // 3. Save clip to database
+      const selectedTrackData = MUSIC_TRACKS.find(t => t.id === selectedTrack)
+
+      const { error: dbError } = await supabase.from('clips').insert({
+        title: title || 'Untitled Clip',
+        game: selectedGame,
+        music: selectedTrackData?.name || 'Unknown',
+        emoji: gameEmojis[selectedGame] || '🎮',
+        color: gameColors[selectedGame] || '#00f5ff',
+        video_url: videoUrl,
+        views: 0,
+        likes: 0,
+        user_id: user?.id,
+      })
+
+      if (dbError) throw dbError
+
+      setUploadProgress(100)
+      setSubmitted(true)
+      setTimeout(() => navigate('/explore'), 3000)
+
+    } catch (err) {
+      console.error('Upload error:', err)
+      setError(err.message || 'Upload failed. Please try again.')
+      setSaving(false)
+      setUploadProgress(0)
     }
-
-    setSaving(false)
-    setSubmitted(true)
-    setTimeout(() => navigate('/explore'), 3000)
   }
 
   if (submitted) {
@@ -95,7 +154,6 @@ function Upload() {
 
       <div className="max-w-2xl mx-auto px-8 pt-32 pb-16">
 
-        {/* Header */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// UPLOAD</p>
         <h1 className="font-black text-4xl text-white mb-2" style={{ fontFamily: 'monospace' }}>
           Drop Your Frag 🎮
@@ -120,21 +178,40 @@ function Upload() {
           </span>
         </div>
 
+        {/* Error */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6">
+            ❌ {error}
+          </div>
+        )}
+
         {/* STEP 1 */}
         {step === 1 && (
           <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleFileInput}
+              className="hidden"
+            />
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
-              onClick={() => setUploaded(true)}
-              className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-300 ${dragging ? 'border-cyan-400 bg-cyan-500/10' : uploaded ? 'border-green-400 bg-green-500/5' : 'border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/5'}`}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-300 ${
+                dragging ? 'border-cyan-400 bg-cyan-500/10'
+                : videoFile ? 'border-green-400 bg-green-500/5'
+                : 'border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/5'
+              }`}
             >
-              {uploaded ? (
+              {videoFile ? (
                 <>
                   <div className="text-5xl mb-4">✅</div>
                   <p className="text-green-400 font-bold tracking-widest" style={{ fontFamily: 'monospace' }}>CLIP READY!</p>
-                  <p className="text-slate-500 text-sm mt-2">gameplay_clip.mp4</p>
+                  <p className="text-slate-500 text-sm mt-2">{videoFile.name}</p>
+                  <p className="text-slate-600 text-xs mt-1">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</p>
                 </>
               ) : (
                 <>
@@ -147,8 +224,8 @@ function Upload() {
             </div>
 
             <button
-              onClick={() => uploaded && setStep(2)}
-              className={`w-full mt-6 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${uploaded ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
+              onClick={() => videoFile && setStep(2)}
+              className={`w-full mt-6 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${videoFile ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
               style={{ fontFamily: 'monospace' }}
             >
               NEXT — ADD DETAILS →
@@ -178,10 +255,7 @@ function Upload() {
                     key={game}
                     onClick={() => setSelectedGame(game)}
                     className={`py-2 px-3 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${selectedGame === game ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400'}`}
-                    style={{
-                      fontFamily: 'monospace',
-                      borderColor: selectedGame === game ? gameColors[game] : undefined
-                    }}
+                    style={{ fontFamily: 'monospace' }}
                   >
                     {gameEmojis[game]} {game}
                   </button>
@@ -236,21 +310,38 @@ function Upload() {
               ))}
             </div>
 
+            {/* Upload Progress */}
+            {saving && (
+              <div className="mb-6">
+                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                  <span>Uploading your frag...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-[#0b1425] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full transition-all duration-500"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep(2)}
-                className="flex-1 py-3 rounded-lg font-black text-sm tracking-widest border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300"
+                disabled={saving}
+                className="flex-1 py-3 rounded-lg font-black text-sm tracking-widest border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300 disabled:opacity-50"
                 style={{ fontFamily: 'monospace' }}
               >
                 ← BACK
               </button>
               <button
-                onClick={() => selectedTrack && handleSubmit()}
-                disabled={saving}
-                className={`flex-1 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${selectedTrack ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
+                onClick={() => selectedTrack && !saving && handleSubmit()}
+                disabled={saving || !selectedTrack}
+                className={`flex-1 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${selectedTrack && !saving ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
                 style={{ fontFamily: 'monospace' }}
               >
-                {saving ? 'SAVING...' : 'UPLOAD FRAG 🔥'}
+                {saving ? `UPLOADING ${uploadProgress}%...` : 'UPLOAD FRAG 🔥'}
               </button>
             </div>
           </div>

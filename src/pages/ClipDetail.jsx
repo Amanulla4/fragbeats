@@ -26,11 +26,13 @@ function ClipDetail() {
   const [commentsLoading, setCommentsLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting] = useState(false)
-
-  // Usernames cache { user_id: username }
   const [usernames, setUsernames] = useState({})
 
+  // Follow
   const [following, setFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+
   const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
@@ -41,8 +43,14 @@ function ClipDetail() {
   }, [id])
 
   useEffect(() => {
-    if (clip && user) checkIfLiked()
-    if (clip?.user_id) fetchCreatorUsername(clip.user_id)
+    if (clip && user) {
+      checkIfLiked()
+      checkIfFollowing()
+    }
+    if (clip?.user_id) {
+      fetchCreatorUsername(clip.user_id)
+      fetchFollowerCount(clip.user_id)
+    }
   }, [clip, user])
 
   async function fetchClip() {
@@ -70,6 +78,14 @@ function ClipDetail() {
     if (data?.username) setClipCreator(data.username)
   }
 
+  async function fetchFollowerCount(userId) {
+    const { count } = await supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', userId)
+    setFollowerCount(count || 0)
+  }
+
   async function fetchRelatedClips(game, currentId) {
     const { data } = await supabase
       .from('clips')
@@ -91,6 +107,17 @@ function ClipDetail() {
     if (data) setLiked(true)
   }
 
+  async function checkIfFollowing() {
+    if (!user || !clip?.user_id) return
+    const { data } = await supabase
+      .from('follows')
+      .select('id')
+      .eq('follower_id', user.id)
+      .eq('following_id', clip.user_id)
+      .single()
+    if (data) setFollowing(true)
+  }
+
   async function fetchComments() {
     setCommentsLoading(true)
     const { data } = await supabase
@@ -101,14 +128,12 @@ function ClipDetail() {
 
     if (data) {
       setComments(data)
-      // Fetch usernames for all unique user_ids in comments
       const uniqueIds = [...new Set(data.map(c => c.user_id))]
       if (uniqueIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('user_id, username')
           .in('user_id', uniqueIds)
-
         if (profiles) {
           const map = {}
           profiles.forEach(p => { map[p.user_id] = p.username })
@@ -138,6 +163,27 @@ function ClipDetail() {
     setLikeLoading(false)
   }
 
+  async function handleFollow() {
+    if (!user) { navigate('/auth'); return }
+    if (followLoading || user.id === clip?.user_id) return
+    setFollowLoading(true)
+
+    if (following) {
+      await supabase.from('follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', clip.user_id)
+      setFollowing(false)
+      setFollowerCount(prev => prev - 1)
+    } else {
+      await supabase.from('follows')
+        .insert({ follower_id: user.id, following_id: clip.user_id })
+      setFollowing(true)
+      setFollowerCount(prev => prev + 1)
+    }
+    setFollowLoading(false)
+  }
+
   async function handleComment() {
     if (!newComment.trim()) return
     if (!user) { navigate('/auth'); return }
@@ -145,25 +191,15 @@ function ClipDetail() {
 
     const { data, error } = await supabase
       .from('comments')
-      .insert({
-        user_id: user.id,
-        clip_id: parseInt(id),
-        text: newComment.trim()
-      })
+      .insert({ user_id: user.id, clip_id: parseInt(id), text: newComment.trim() })
       .select()
       .single()
 
     if (!error && data) {
-      // Add current user's username to cache if not there
       if (!usernames[user.id]) {
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('username')
-          .eq('user_id', user.id)
-          .single()
-        if (profile?.username) {
-          setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
-        }
+          .from('profiles').select('username').eq('user_id', user.id).single()
+        if (profile?.username) setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
       }
       setComments(prev => [data, ...prev])
       setNewComment('')
@@ -187,9 +223,7 @@ function ClipDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <Navbar />
-        <div className="text-cyan-400 text-xs tracking-widest animate-pulse" style={{ fontFamily: 'monospace' }}>
-          LOADING CLIP...
-        </div>
+        <div className="text-cyan-400 text-xs tracking-widest animate-pulse" style={{ fontFamily: 'monospace' }}>LOADING CLIP...</div>
       </div>
     )
   }
@@ -201,13 +235,13 @@ function ClipDetail() {
         <div className="text-center">
           <div className="text-5xl mb-4">💀</div>
           <p className="text-slate-400 text-sm tracking-widest">CLIP NOT FOUND</p>
-          <button onClick={() => navigate('/explore')} className="mt-4 text-cyan-400 text-xs tracking-widest">
-            ← BACK TO EXPLORE
-          </button>
+          <button onClick={() => navigate('/explore')} className="mt-4 text-cyan-400 text-xs tracking-widest">← BACK TO EXPLORE</button>
         </div>
       </div>
     )
   }
+
+  const isOwnClip = user?.id === clip.user_id
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -216,7 +250,6 @@ function ClipDetail() {
       <div className="max-w-6xl mx-auto px-8 pt-32 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Left - Main Clip */}
           <div className="lg:col-span-2">
 
             {/* Video Player */}
@@ -230,9 +263,7 @@ function ClipDetail() {
                 <>
                   <div className="text-8xl">{clip.emoji || '🎮'}</div>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-20 h-20 rounded-full border-2 border-white/30 bg-black/50 flex items-center justify-center text-3xl backdrop-blur-sm cursor-pointer hover:scale-110 transition-all duration-300">
-                      ▶
-                    </div>
+                    <div className="w-20 h-20 rounded-full border-2 border-white/30 bg-black/50 flex items-center justify-center text-3xl backdrop-blur-sm cursor-pointer hover:scale-110 transition-all duration-300">▶</div>
                   </div>
                 </>
               )}
@@ -262,16 +293,11 @@ function ClipDetail() {
                     <span>{new Date(clip.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-
                 <div className="flex gap-3 flex-shrink-0">
                   <button
                     onClick={handleLike}
                     disabled={likeLoading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${
-                      liked
-                        ? 'border-pink-400 text-pink-400 bg-pink-400/10'
-                        : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${liked ? 'border-pink-400 text-pink-400 bg-pink-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'}`}
                   >
                     {liked ? '❤️' : '🤍'} {likeCount}
                   </button>
@@ -287,27 +313,31 @@ function ClipDetail() {
               {/* Creator Info */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">
-                    🎮
-                  </div>
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">🎮</div>
                   <div>
                     <div className="text-cyan-400 font-bold text-sm">
                       @{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}
                     </div>
-                    <div className="text-slate-500 text-xs">FragBeats Creator</div>
+                    <div className="text-slate-500 text-xs">{followerCount} followers</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setFollowing(!following)}
-                  className={`px-4 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 ${
-                    following
-                      ? 'border border-cyan-500/20 text-slate-400'
-                      : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
-                  }`}
-                  style={{ fontFamily: 'monospace' }}
-                >
-                  {following ? 'Following ✓' : 'Follow'}
-                </button>
+                {!isOwnClip && (
+                  <button
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    className={`px-4 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 disabled:opacity-50 ${
+                      following
+                        ? 'border border-cyan-500/20 text-slate-400 hover:border-red-400 hover:text-red-400'
+                        : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110'
+                    }`}
+                    style={{ fontFamily: 'monospace' }}
+                  >
+                    {followLoading ? '...' : following ? 'Following ✓' : 'Follow'}
+                  </button>
+                )}
+                {isOwnClip && (
+                  <span className="text-slate-600 text-xs tracking-widest">Your clip</span>
+                )}
               </div>
             </div>
 
@@ -318,9 +348,7 @@ function ClipDetail() {
               </h3>
 
               <div className="flex gap-3 mb-6">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">
-                  🎮
-                </div>
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">🎮</div>
                 <div className="flex-1 flex gap-2">
                   <input
                     type="text"
@@ -371,9 +399,7 @@ function ClipDetail() {
                       </div>
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-cyan-400 text-xs font-bold">
-                            @{getUsername(comment.user_id)}
-                          </span>
+                          <span className="text-cyan-400 text-xs font-bold">@{getUsername(comment.user_id)}</span>
                           <span className="text-slate-600 text-xs">{formatTime(comment.created_at)}</span>
                         </div>
                         <p className="text-slate-300 text-sm">{comment.text}</p>
@@ -387,9 +413,7 @@ function ClipDetail() {
 
           {/* Right - Related Clips */}
           <div>
-            <h3 className="font-black text-sm text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>
-              RELATED CLIPS
-            </h3>
+            <h3 className="font-black text-sm text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>RELATED CLIPS</h3>
             <div className="flex flex-col gap-4">
               {relatedClips.length === 0 && (
                 <p className="text-slate-600 text-xs tracking-widest">No related clips yet</p>
@@ -403,9 +427,7 @@ function ClipDetail() {
                   <div className="h-24 flex items-center justify-center text-4xl relative"
                     style={{ background: `linear-gradient(135deg, #0b1425, ${related.color || '#00f5ff'}22)` }}>
                     {related.emoji || '🎮'}
-                    <div className="absolute w-10 h-10 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm group-hover:border-cyan-400/60 transition-all duration-300">
-                      ▶
-                    </div>
+                    <div className="absolute w-10 h-10 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm group-hover:border-cyan-400/60 transition-all duration-300">▶</div>
                   </div>
                   <div className="p-3">
                     <div className="text-white text-xs font-bold mb-1">{related.title}</div>
@@ -413,7 +435,6 @@ function ClipDetail() {
                   </div>
                 </div>
               ))}
-
               <button
                 onClick={() => navigate('/explore')}
                 className="w-full py-3 border border-cyan-500/20 text-cyan-400 text-xs tracking-widest rounded-lg hover:border-cyan-400 transition-all duration-200"
@@ -426,10 +447,7 @@ function ClipDetail() {
         </div>
       </div>
 
-      {shareOpen && (
-        <ShareModal clip={clip} onClose={() => setShareOpen(false)} />
-      )}
-
+      {shareOpen && <ShareModal clip={clip} onClose={() => setShareOpen(false)} />}
       <Footer />
     </div>
   )

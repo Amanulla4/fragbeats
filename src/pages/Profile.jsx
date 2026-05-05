@@ -23,7 +23,7 @@ function Profile() {
     const { data } = await supabase
       .from('profiles')
       .select('username')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single()
 
     if (data?.username) setUsername(data.username)
@@ -59,28 +59,21 @@ function Profile() {
 
       <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">
 
-        {/* Profile Header */}
         <div className="bg-[#0b1425] border border-cyan-500/20 rounded-xl p-8 mb-8 relative overflow-hidden">
-
           <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
-
-            {/* Avatar */}
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-4xl flex-shrink-0">
               🎮
             </div>
 
-            {/* Info */}
             <div className="flex-1 text-center md:text-left">
               <h1 className="font-black text-2xl text-white tracking-widest mb-1" style={{ fontFamily: 'monospace' }}>
                 @{displayName}
               </h1>
               <p className="text-cyan-400 text-sm mb-3 tracking-widest">FragBeats Creator</p>
-              <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-                {user?.email}
-              </p>
+              <p className="text-slate-400 text-sm max-w-md leading-relaxed">{user?.email}</p>
 
               <div className="flex gap-3 mt-4 justify-center md:justify-start">
                 <button
@@ -95,10 +88,8 @@ function Profile() {
                 </button>
               </div>
             </div>
-
           </div>
 
-          {/* Stats */}
           <div className="relative z-10 grid grid-cols-4 gap-4 mt-8 pt-8 border-t border-cyan-500/10">
             {STATS.map(stat => (
               <div key={stat.label} className="text-center">
@@ -111,13 +102,9 @@ function Profile() {
           </div>
         </div>
 
-        {/* My Clips */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// MY CLIPS</p>
-        <h2 className="font-black text-3xl text-white mb-6" style={{ fontFamily: 'monospace' }}>
-          My Frags 🎮
-        </h2>
+        <h2 className="font-black text-3xl text-white mb-6" style={{ fontFamily: 'monospace' }}>My Frags 🎮</h2>
 
-        {/* Loading */}
         {loading && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => (
@@ -133,7 +120,6 @@ function Profile() {
           </div>
         )}
 
-        {/* No clips */}
         {!loading && clips.length === 0 && (
           <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
             <div className="text-5xl mb-4">🎮</div>
@@ -148,7 +134,6 @@ function Profile() {
           </div>
         )}
 
-        {/* Real Clips Grid */}
         {!loading && clips.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {clips.map(clip => (
@@ -169,12 +154,8 @@ function Profile() {
                     ▶
                   </div>
                 </div>
-
                 <div className="p-4">
-                  <div
-                    className="font-black text-xs tracking-widest mb-1"
-                    style={{ fontFamily: 'monospace', color: clip.color || '#00f5ff' }}
-                  >
+                  <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color || '#00f5ff' }}>
                     {clip.game}
                   </div>
                   <div className="text-white text-sm font-bold mb-1">{clip.title}</div>

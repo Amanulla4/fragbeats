@@ -29,13 +29,14 @@ function Auth() {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
 
-        // Save username to profiles table
+        // Save username + user_id to profiles table
         if (data?.user) {
           const { error: profileError } = await supabase
             .from('profiles')
-            .upsert({
-              id: data.user.id,
+            .insert({
+              user_id: data.user.id,
               username: username.trim().toLowerCase().replace(/\s+/g, '_'),
+              email: email,
             })
           if (profileError) console.error('Profile save error:', profileError)
         }

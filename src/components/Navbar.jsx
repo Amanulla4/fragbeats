@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [username, setUsername] = useState('')
   const navigate = useNavigate()
   const { isDark, toggleTheme } = useTheme()
   const { user, signOut } = useAuth()
@@ -15,6 +17,21 @@ function Navbar() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    if (user) fetchUsername()
+  }, [user])
+
+  async function fetchUsername() {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('user_id', user.id)
+      .single()
+
+    if (data?.username) setUsername(data.username)
+    else setUsername(user.email?.split('@')[0] || 'gamer')
+  }
 
   const handleNavClick = (path) => {
     navigate(path)
@@ -64,8 +81,8 @@ function Navbar() {
 
           {user ? (
             <>
-              <div className="text-slate-400 text-xs tracking-widest hidden lg:block">
-                {user.email?.split('@')[0]}
+              <div className="text-cyan-400 text-xs tracking-widest hidden lg:block font-bold" style={{ fontFamily: 'monospace' }}>
+                @{username}
               </div>
               <button
                 onClick={handleSignOut}
@@ -103,6 +120,11 @@ function Navbar() {
 
       {menuOpen && (
         <div className="fixed top-16 left-0 right-0 z-40 border-b border-cyan-500/10 backdrop-blur-lg px-8 py-6 flex flex-col gap-4 md:hidden" style={{ background: 'var(--bg)' }}>
+          {user && (
+            <div className="text-cyan-400 text-xs tracking-widest font-bold pb-2 border-b border-cyan-500/10" style={{ fontFamily: 'monospace' }}>
+              @{username}
+            </div>
+          )}
           {navLinks.map(link => (
             <span
               key={link.label}

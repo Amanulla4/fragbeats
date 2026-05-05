@@ -12,6 +12,7 @@ function ClipDetail() {
   const { user } = useAuth()
 
   const [clip, setClip] = useState(null)
+  const [clipCreator, setClipCreator] = useState('')
   const [relatedClips, setRelatedClips] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -26,6 +27,9 @@ function ClipDetail() {
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting] = useState(false)
 
+  // Usernames cache { user_id: username }
+  const [usernames, setUsernames] = useState({})
+
   const [following, setFollowing] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
@@ -38,6 +42,7 @@ function ClipDetail() {
 
   useEffect(() => {
     if (clip && user) checkIfLiked()
+    if (clip?.user_id) fetchCreatorUsername(clip.user_id)
   }, [clip, user])
 
   async function fetchClip() {
@@ -54,6 +59,15 @@ function ClipDetail() {
       fetchRelatedClips(data.game, data.id)
     }
     setLoading(false)
+  }
+
+  async function fetchCreatorUsername(userId) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('user_id', userId)
+      .single()
+    if (data?.username) setClipCreator(data.username)
   }
 
   async function fetchRelatedClips(game, currentId) {
@@ -84,7 +98,24 @@ function ClipDetail() {
       .select('*')
       .eq('clip_id', id)
       .order('created_at', { ascending: false })
-    if (data) setComments(data)
+
+    if (data) {
+      setComments(data)
+      // Fetch usernames for all unique user_ids in comments
+      const uniqueIds = [...new Set(data.map(c => c.user_id))]
+      if (uniqueIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, username')
+          .in('user_id', uniqueIds)
+
+        if (profiles) {
+          const map = {}
+          profiles.forEach(p => { map[p.user_id] = p.username })
+          setUsernames(map)
+        }
+      }
+    }
     setCommentsLoading(false)
   }
 
@@ -123,10 +154,25 @@ function ClipDetail() {
       .single()
 
     if (!error && data) {
+      // Add current user's username to cache if not there
+      if (!usernames[user.id]) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('user_id', user.id)
+          .single()
+        if (profile?.username) {
+          setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
+        }
+      }
       setComments(prev => [data, ...prev])
       setNewComment('')
     }
     setPosting(false)
+  }
+
+  function getUsername(userId) {
+    return usernames[userId] || userId?.slice(0, 8) || 'user'
   }
 
   function formatTime(timestamp) {
@@ -246,7 +292,7 @@ function ClipDetail() {
                   </div>
                   <div>
                     <div className="text-cyan-400 font-bold text-sm">
-                      @{clip.user_id?.slice(0, 8) || 'creator'}
+                      @{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}
                     </div>
                     <div className="text-slate-500 text-xs">FragBeats Creator</div>
                   </div>
@@ -271,7 +317,6 @@ function ClipDetail() {
                 COMMENTS ({comments.length})
               </h3>
 
-              {/* Comment Input */}
               <div className="flex gap-3 mb-6">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">
                   🎮
@@ -297,7 +342,6 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* Comments List */}
               {commentsLoading && (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => (
@@ -323,12 +367,12 @@ function ClipDetail() {
                   {comments.map(comment => (
                     <div key={comment.id} className="flex gap-3">
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black flex-shrink-0">
-                        {comment.user_id?.slice(0, 1).toUpperCase() || 'U'}
+                        {getUsername(comment.user_id)[0].toUpperCase()}
                       </div>
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-cyan-400 text-xs font-bold">
-                            @{comment.user_id?.slice(0, 8) || 'user'}
+                            @{getUsername(comment.user_id)}
                           </span>
                           <span className="text-slate-600 text-xs">{formatTime(comment.created_at)}</span>
                         </div>
@@ -357,7 +401,7 @@ function ClipDetail() {
                   className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:border-cyan-400/30 transition-all duration-300 group"
                 >
                   <div className="h-24 flex items-center justify-center text-4xl relative"
-                    style={{ background: 'linear-gradient(135deg, #0b1425, #00f5ff22)' }}>
+                    style={{ background: `linear-gradient(135deg, #0b1425, ${related.color || '#00f5ff'}22)` }}>
                     {related.emoji || '🎮'}
                     <div className="absolute w-10 h-10 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm group-hover:border-cyan-400/60 transition-all duration-300">
                       ▶

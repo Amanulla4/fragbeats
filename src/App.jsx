@@ -19,6 +19,7 @@ import Pricing from './pages/Pricing'
 import Waitlist from './pages/Waitlist'
 import Terms from './pages/Terms'
 import Blog from './pages/Blog'
+import Feed from './pages/Feed'
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import MusicPlayer from './components/MusicPlayer'
@@ -27,8 +28,10 @@ import ProtectedRoute from './components/ProtectedRoute'
 function AnimatedRoutes() {
   const location = useLocation()
   const [loading, setLoading] = useState(false)
+  const isFeed = location.pathname === '/feed'
 
   useEffect(() => {
+    if (isFeed) return // No loader on feed
     setLoading(true)
     const timer = setTimeout(() => setLoading(false), 600)
     return () => clearTimeout(timer)
@@ -37,11 +40,12 @@ function AnimatedRoutes() {
   return (
     <>
       {loading && <PageLoader />}
-      <MusicPlayer />
+      {!isFeed && <MusicPlayer />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/explore" element={<Explore />} />
+        <Route path="/feed" element={<Feed />} />
         <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/music" element={<Music />} />

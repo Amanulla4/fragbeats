@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -9,6 +9,7 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [username, setUsername] = useState('')
   const navigate = useNavigate()
+  const location = useLocation()
   const { isDark, toggleTheme } = useTheme()
   const { user, signOut } = useAuth()
 
@@ -28,7 +29,6 @@ function Navbar() {
       .select('username')
       .eq('user_id', user.id)
       .single()
-
     if (data?.username) setUsername(data.username)
     else setUsername(user.email?.split('@')[0] || 'gamer')
   }
@@ -43,8 +43,12 @@ function Navbar() {
     navigate('/')
   }
 
+  // Hide navbar on feed page
+  if (location.pathname === '/feed') return null
+
   const navLinks = [
     { label: 'Explore', path: '/explore' },
+    { label: '▶ Feed', path: '/feed' },
     { label: 'Music', path: '/music' },
     { label: '🏆', path: '/leaderboard' },
     { label: 'Profile', path: '/profile' },
@@ -67,7 +71,16 @@ function Navbar() {
         <ul className="hidden md:flex gap-8 list-none">
           {navLinks.map(link => (
             <li key={link.label}>
-              <span onClick={() => handleNavClick(link.path)} className="text-slate-400 text-sm tracking-widest uppercase cursor-pointer hover:text-cyan-400 transition-colors duration-200">
+              <span
+                onClick={() => handleNavClick(link.path)}
+                className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 ${
+                  location.pathname === link.path
+                    ? 'text-cyan-400'
+                    : link.path === '/feed'
+                    ? 'text-purple-400 hover:text-purple-300'
+                    : 'text-slate-400 hover:text-cyan-400'
+                }`}
+              >
                 {link.label}
               </span>
             </li>
@@ -129,16 +142,15 @@ function Navbar() {
             <span
               key={link.label}
               onClick={() => handleNavClick(link.path)}
-              className="text-slate-400 text-sm tracking-widest uppercase cursor-pointer hover:text-cyan-400 transition-colors duration-200 py-2 border-b border-cyan-500/10"
+              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${
+                link.path === '/feed' ? 'text-purple-400' : 'text-slate-400 hover:text-cyan-400'
+              }`}
             >
               {link.label}
             </span>
           ))}
           {user ? (
-            <button
-              onClick={handleSignOut}
-              className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left"
-            >
+            <button onClick={handleSignOut} className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left">
               Logout
             </button>
           ) : (

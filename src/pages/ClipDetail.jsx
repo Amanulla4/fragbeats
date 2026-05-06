@@ -16,19 +16,16 @@ function ClipDetail() {
   const [relatedClips, setRelatedClips] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Likes
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [likeLoading, setLikeLoading] = useState(false)
 
-  // Comments
   const [comments, setComments] = useState([])
   const [commentsLoading, setCommentsLoading] = useState(true)
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting] = useState(false)
   const [usernames, setUsernames] = useState({})
 
-  // Follow
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
@@ -36,31 +33,17 @@ function ClipDetail() {
   const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
-    if (id) {
-      fetchClip()
-      fetchComments()
-    }
+    if (id) { fetchClip(); fetchComments() }
   }, [id])
 
   useEffect(() => {
-    if (clip && user) {
-      checkIfLiked()
-      checkIfFollowing()
-    }
-    if (clip?.user_id) {
-      fetchCreatorUsername(clip.user_id)
-      fetchFollowerCount(clip.user_id)
-    }
+    if (clip && user) { checkIfLiked(); checkIfFollowing() }
+    if (clip?.user_id) { fetchCreatorUsername(clip.user_id); fetchFollowerCount(clip.user_id) }
   }, [clip, user])
 
   async function fetchClip() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('clips')
-      .select('*')
-      .eq('id', id)
-      .single()
-
+    const { data, error } = await supabase.from('clips').select('*').eq('id', id).single()
     if (!error && data) {
       setClip(data)
       setLikeCount(data.likes || 0)
@@ -70,70 +53,40 @@ function ClipDetail() {
   }
 
   async function fetchCreatorUsername(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('user_id', userId)
-      .single()
+    const { data } = await supabase.from('profiles').select('username').eq('user_id', userId).single()
     if (data?.username) setClipCreator(data.username)
   }
 
   async function fetchFollowerCount(userId) {
-    const { count } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('following_id', userId)
+    const { count } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId)
     setFollowerCount(count || 0)
   }
 
   async function fetchRelatedClips(game, currentId) {
-    const { data } = await supabase
-      .from('clips')
-      .select('*')
-      .eq('game', game)
-      .neq('id', currentId)
-      .limit(3)
+    const { data } = await supabase.from('clips').select('*').eq('game', game).neq('id', currentId).limit(3)
     if (data) setRelatedClips(data)
   }
 
   async function checkIfLiked() {
     if (!user) return
-    const { data } = await supabase
-      .from('clip_likes')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('clip_id', id)
-      .single()
+    const { data } = await supabase.from('clip_likes').select('id').eq('user_id', user.id).eq('clip_id', id).single()
     if (data) setLiked(true)
   }
 
   async function checkIfFollowing() {
     if (!user || !clip?.user_id) return
-    const { data } = await supabase
-      .from('follows')
-      .select('id')
-      .eq('follower_id', user.id)
-      .eq('following_id', clip.user_id)
-      .single()
+    const { data } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', clip.user_id).single()
     if (data) setFollowing(true)
   }
 
   async function fetchComments() {
     setCommentsLoading(true)
-    const { data } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('clip_id', id)
-      .order('created_at', { ascending: false })
-
+    const { data } = await supabase.from('comments').select('*').eq('clip_id', id).order('created_at', { ascending: false })
     if (data) {
       setComments(data)
       const uniqueIds = [...new Set(data.map(c => c.user_id))]
       if (uniqueIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, username')
-          .in('user_id', uniqueIds)
+        const { data: profiles } = await supabase.from('profiles').select('user_id, username').in('user_id', uniqueIds)
         if (profiles) {
           const map = {}
           profiles.forEach(p => { map[p.user_id] = p.username })
@@ -142,6 +95,19 @@ function ClipDetail() {
       }
     }
     setCommentsLoading(false)
+  }
+
+  async function sendNotification(toUserId, type, message) {
+    // Don't notify yourself
+    if (!user || user.id === toUserId) return
+    await supabase.from('notifications').insert({
+      user_id: toUserId,
+      from_user_id: user.id,
+      type,
+      clip_id: type !== 'follow' ? parseInt(id) : null,
+      message,
+      read: false,
+    })
   }
 
   async function handleLike() {
@@ -159,6 +125,8 @@ function ClipDetail() {
       await supabase.from('clips').update({ likes: likeCount + 1 }).eq('id', id)
       setLiked(true)
       setLikeCount(prev => prev + 1)
+      // Send like notification to clip owner
+      await sendNotification(clip.user_id, 'like', `liked your clip "${clip.title}"`)
     }
     setLikeLoading(false)
   }
@@ -169,17 +137,15 @@ function ClipDetail() {
     setFollowLoading(true)
 
     if (following) {
-      await supabase.from('follows')
-        .delete()
-        .eq('follower_id', user.id)
-        .eq('following_id', clip.user_id)
+      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
       setFollowing(false)
       setFollowerCount(prev => prev - 1)
     } else {
-      await supabase.from('follows')
-        .insert({ follower_id: user.id, following_id: clip.user_id })
+      await supabase.from('follows').insert({ follower_id: user.id, following_id: clip.user_id })
       setFollowing(true)
       setFollowerCount(prev => prev + 1)
+      // Send follow notification
+      await sendNotification(clip.user_id, 'follow', 'started following you')
     }
     setFollowLoading(false)
   }
@@ -197,12 +163,13 @@ function ClipDetail() {
 
     if (!error && data) {
       if (!usernames[user.id]) {
-        const { data: profile } = await supabase
-          .from('profiles').select('username').eq('user_id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('username').eq('user_id', user.id).single()
         if (profile?.username) setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
       }
       setComments(prev => [data, ...prev])
       setNewComment('')
+      // Send comment notification to clip owner
+      await sendNotification(clip.user_id, 'comment', `commented on your clip "${clip.title}"`)
     }
     setPosting(false)
   }
@@ -253,10 +220,8 @@ function ClipDetail() {
           <div className="lg:col-span-2">
 
             {/* Video Player */}
-            <div
-              className="w-full aspect-video bg-[#0b1425] rounded-xl border border-cyan-500/20 flex items-center justify-center relative overflow-hidden mb-4"
-              style={{ background: 'linear-gradient(135deg, #0b1425, #00f5ff11)' }}
-            >
+            <div className="w-full aspect-video bg-[#0b1425] rounded-xl border border-cyan-500/20 flex items-center justify-center relative overflow-hidden mb-4"
+              style={{ background: 'linear-gradient(135deg, #0b1425, #00f5ff11)' }}>
               {clip.video_url ? (
                 <video src={clip.video_url} controls className="w-full h-full object-cover rounded-xl" />
               ) : (
@@ -282,9 +247,7 @@ function ClipDetail() {
             <div className="mb-6">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
-                  <h1 className="font-black text-2xl text-white mb-1" style={{ fontFamily: 'monospace' }}>
-                    {clip.title} {clip.emoji}
-                  </h1>
+                  <h1 className="font-black text-2xl text-white mb-1" style={{ fontFamily: 'monospace' }}>{clip.title} {clip.emoji}</h1>
                   <div className="flex items-center gap-3 text-slate-500 text-sm">
                     <span>👁 {clip.views || 0} views</span>
                     <span>•</span>
@@ -310,32 +273,25 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* Creator Info */}
+              {/* Creator */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">🎮</div>
                   <div>
-                    <div className="text-cyan-400 font-bold text-sm">
-                      @{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}
-                    </div>
+                    <div className="text-cyan-400 font-bold text-sm">@{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}</div>
                     <div className="text-slate-500 text-xs">{followerCount} followers</div>
                   </div>
                 </div>
-                {!isOwnClip && (
+                {!isOwnClip ? (
                   <button
                     onClick={handleFollow}
                     disabled={followLoading}
-                    className={`px-4 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 disabled:opacity-50 ${
-                      following
-                        ? 'border border-cyan-500/20 text-slate-400 hover:border-red-400 hover:text-red-400'
-                        : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110'
-                    }`}
+                    className={`px-4 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 disabled:opacity-50 ${following ? 'border border-cyan-500/20 text-slate-400 hover:border-red-400 hover:text-red-400' : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110'}`}
                     style={{ fontFamily: 'monospace' }}
                   >
                     {followLoading ? '...' : following ? 'Following ✓' : 'Follow'}
                   </button>
-                )}
-                {isOwnClip && (
+                ) : (
                   <span className="text-slate-600 text-xs tracking-widest">Your clip</span>
                 )}
               </div>
@@ -343,9 +299,7 @@ function ClipDetail() {
 
             {/* Comments */}
             <div>
-              <h3 className="font-black text-lg text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>
-                COMMENTS ({comments.length})
-              </h3>
+              <h3 className="font-black text-lg text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>COMMENTS ({comments.length})</h3>
 
               <div className="flex gap-3 mb-6">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">🎮</div>
@@ -411,13 +365,11 @@ function ClipDetail() {
             </div>
           </div>
 
-          {/* Right - Related Clips */}
+          {/* Related Clips */}
           <div>
             <h3 className="font-black text-sm text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>RELATED CLIPS</h3>
             <div className="flex flex-col gap-4">
-              {relatedClips.length === 0 && (
-                <p className="text-slate-600 text-xs tracking-widest">No related clips yet</p>
-              )}
+              {relatedClips.length === 0 && <p className="text-slate-600 text-xs tracking-widest">No related clips yet</p>}
               {relatedClips.map(related => (
                 <div
                   key={related.id}
@@ -435,10 +387,7 @@ function ClipDetail() {
                   </div>
                 </div>
               ))}
-              <button
-                onClick={() => navigate('/explore')}
-                className="w-full py-3 border border-cyan-500/20 text-cyan-400 text-xs tracking-widest rounded-lg hover:border-cyan-400 transition-all duration-200"
-              >
+              <button onClick={() => navigate('/explore')} className="w-full py-3 border border-cyan-500/20 text-cyan-400 text-xs tracking-widest rounded-lg hover:border-cyan-400 transition-all duration-200">
                 VIEW MORE CLIPS →
               </button>
             </div>

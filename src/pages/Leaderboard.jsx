@@ -1,44 +1,129 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
-const TABS = ['Creators', 'Clips', 'Music']
+const TABS = ['Creators', 'Clips']
 
-const TOP_CREATORS = [
-  { rank: 1, name: '@drip_editz', bio: 'Free Fire • Edit lord', clips: 15, followers: '12K', views: '1.2M', emoji: '🔥', badge: '👑' },
-  { rank: 2, name: '@neonwolf99', bio: 'Valorant Radiant', clips: 8, followers: '4.5K', views: '890K', emoji: '🔫', badge: '🥈' },
-  { rank: 3, name: '@ghostfrags', bio: 'COD Mobile • Night grinder', clips: 6, followers: '2.8K', views: '654K', emoji: '💀', badge: '🥉' },
-  { rank: 4, name: '@fragkingAman', bio: 'BGMI Conqueror', clips: 3, followers: '1.2K', views: '428K', emoji: '🎮', badge: null },
-  { rank: 5, name: '@cityvibes', bio: 'GTA V • Urban clips', clips: 9, followers: '3.1K', views: '398K', emoji: '🚗', badge: null },
-  { rank: 6, name: '@flashpoint', bio: 'Valorant • Flash king', clips: 11, followers: '5.2K', views: '356K', emoji: '⚡', badge: null },
-  { rank: 7, name: '@sniperking', bio: 'BGMI • Long range', clips: 4, followers: '987', views: '289K', emoji: '🎯', badge: null },
-  { rank: 8, name: '@blazeshot', bio: 'Free Fire • Rusher', clips: 7, followers: '1.8K', views: '201K', emoji: '💥', badge: null },
-]
+const BADGES = ['👑', '🥈', '🥉']
+const RANK_COLORS = ['#fbbf24', '#94a3b8', '#fb923c']
 
-const TOP_CLIPS = [
-  { rank: 1, title: 'Headshot compilation', creator: '@drip_editz', game: 'Free Fire', views: '211K', likes: '8.7K', emoji: '🔥', badge: '👑' },
-  { rank: 2, title: 'Ace round highlight', creator: '@flashpoint', game: 'Valorant', views: '167K', likes: '6.1K', emoji: '⚡', badge: '🥈' },
-  { rank: 3, title: 'Solo win gameplay', creator: '@cityvibes', game: 'GTA V', views: '143K', likes: '5.3K', emoji: '🚗', badge: '🥉' },
-  { rank: 4, title: 'Insane 1v4 clutch', creator: '@fragkingAman', game: 'BGMI', views: '128K', likes: '4.2K', emoji: '🎮', badge: null },
-  { rank: 5, title: 'Neon rush gameplay', creator: '@neonwolf99', game: 'Valorant', views: '94K', likes: '3.1K', emoji: '🔫', badge: null },
-  { rank: 6, title: 'Solo vs Squad win', creator: '@fragkingAman', game: 'BGMI', views: '89K', likes: '3.8K', emoji: '🎯', badge: null },
-  { rank: 7, title: 'Ghost mode gameplay', creator: '@ghostfrags', game: 'COD Mobile', views: '76K', likes: '2.9K', emoji: '💀', badge: null },
-  { rank: 8, title: 'Blaze rush clips', creator: '@blazeshot', game: 'Free Fire', views: '55K', likes: '1.9K', emoji: '💥', badge: null },
-]
-
-const TOP_MUSIC = [
-  { rank: 1, name: 'Deep Focus', artist: 'MindWave', genre: 'Ambient', plays: '198K', duration: '5:01', badge: '👑' },
-  { rank: 2, name: 'Synthwave Dreams', artist: 'RetroSynth', genre: 'Synthwave', plays: '121K', duration: '4:12', badge: '🥈' },
-  { rank: 3, name: 'Chill Lo-fi Vol.3', artist: 'FragBeats Studio', genre: 'Lo-fi', plays: '89K', duration: '3:24', badge: '🥉' },
-  { rank: 4, name: 'Ghost Mode', artist: 'PhantomBeats', genre: 'Ambient', plays: '87K', duration: '4:33', badge: null },
-  { rank: 5, name: 'Urban Lo-fi', artist: 'CityBeats', genre: 'Lo-fi', plays: '76K', duration: '2:33', badge: null },
-  { rank: 6, name: 'Midnight Vibes', artist: 'NeonWave', genre: 'Synthwave', plays: '64K', duration: '2:58', badge: null },
-  { rank: 7, name: 'Street Level', artist: 'CityBeats', genre: 'Hip-hop', plays: '61K', duration: '2:21', badge: null },
-  { rank: 8, name: 'Neon Nights', artist: 'NeonWave', genre: 'Synthwave', plays: '55K', duration: '3:18', badge: null },
-]
+const gameColors = {
+  'BGMI': '#00f5ff', 'Valorant': '#bf00ff', 'Free Fire': '#ff6b35',
+  'COD Mobile': '#ff2d55', 'GTA V': '#ffd700', 'Other': '#00f5ff'
+}
 
 function Leaderboard() {
   const [activeTab, setActiveTab] = useState('Creators')
+  const [creators, setCreators] = useState([])
+  const [clips, setClips] = useState([])
+  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchLeaderboard()
+  }, [])
+
+  async function fetchLeaderboard() {
+    setLoading(true)
+
+    // Top creators by follower count
+    const { data: followData } = await supabase
+      .from('follows')
+      .select('following_id')
+
+    // Count followers per user
+    const followerMap = {}
+    if (followData) {
+      followData.forEach(f => {
+        followerMap[f.following_id] = (followerMap[f.following_id] || 0) + 1
+      })
+    }
+
+    // Get profiles
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('user_id, username, bio')
+
+    // Get clip counts and views per user
+    const { data: clipData } = await supabase
+      .from('clips')
+      .select('user_id, views, likes')
+
+    const clipStats = {}
+    if (clipData) {
+      clipData.forEach(c => {
+        if (!clipStats[c.user_id]) clipStats[c.user_id] = { clips: 0, views: 0, likes: 0 }
+        clipStats[c.user_id].clips++
+        clipStats[c.user_id].views += (c.views || 0)
+        clipStats[c.user_id].likes += (c.likes || 0)
+      })
+    }
+
+    // Merge and sort creators by followers
+    if (profileData) {
+      const merged = profileData
+        .filter(p => p.username)
+        .map(p => ({
+          ...p,
+          followers: followerMap[p.user_id] || 0,
+          clips: clipStats[p.user_id]?.clips || 0,
+          views: clipStats[p.user_id]?.views || 0,
+          likes: clipStats[p.user_id]?.likes || 0,
+        }))
+        .sort((a, b) => b.followers - a.followers)
+        .slice(0, 10)
+      setCreators(merged)
+    }
+
+    // Top clips by views
+    const { data: topClips } = await supabase
+      .from('clips')
+      .select('*')
+      .order('views', { ascending: false })
+      .limit(10)
+
+    if (topClips) {
+      // Get usernames for clip creators
+      const uniqueIds = [...new Set(topClips.map(c => c.user_id).filter(Boolean))]
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, username')
+        .in('user_id', uniqueIds)
+
+      const usernameMap = {}
+      if (profiles) profiles.forEach(p => { usernameMap[p.user_id] = p.username })
+
+      setClips(topClips.map(c => ({ ...c, creatorUsername: usernameMap[c.user_id] || c.user_id?.slice(0, 8) })))
+    }
+
+    setLoading(false)
+  }
+
+  function formatNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K'
+    return n || 0
+  }
+
+  const topCreators = creators.slice(0, 3)
+  const topClips = clips.slice(0, 3)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+        <Navbar />
+        <div className="max-w-3xl mx-auto px-8 pt-32">
+          <div className="flex flex-col gap-3">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-16 bg-[#0b1425] rounded-lg animate-pulse border border-cyan-500/10" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -46,12 +131,11 @@ function Leaderboard() {
 
       <div className="max-w-3xl mx-auto px-8 pt-32 pb-16">
 
-        {/* Header */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// LEADERBOARD</p>
         <h1 className="font-black text-4xl md:text-5xl text-white mb-2" style={{ fontFamily: 'monospace' }}>
           Top of the Game 🏆
         </h1>
-        <p className="text-slate-400 mb-8">The best creators, clips and music on FragBeats</p>
+        <p className="text-slate-400 mb-8">The best creators and clips on FragBeats</p>
 
         {/* Tabs */}
         <div className="flex gap-3 mb-8">
@@ -59,9 +143,11 @@ function Leaderboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${activeTab === tab
-                ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
-                : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'}`}
+              className={`px-5 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${
+                activeTab === tab
+                  ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
+                  : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'
+              }`}
               style={{ fontFamily: 'monospace' }}
             >
               {tab}
@@ -69,50 +155,41 @@ function Leaderboard() {
           ))}
         </div>
 
-        {/* Top 3 Podium */}
-        {activeTab === 'Creators' && (
+        {/* Podium Top 3 */}
+        {activeTab === 'Creators' && topCreators.length > 0 && (
           <div className="grid grid-cols-3 gap-4 mb-8">
-            {TOP_CREATORS.slice(0, 3).map((creator, i) => (
+            {topCreators.map((creator, i) => (
               <div
-                key={creator.rank}
-                className={`bg-[#0b1425] border rounded-xl p-4 text-center transition-all duration-300 ${i === 0 ? 'border-yellow-400/40 -translate-y-2' : i === 1 ? 'border-slate-400/40' : 'border-orange-400/40'}`}
+                key={creator.user_id}
+                className={`bg-[#0b1425] border rounded-xl p-4 text-center transition-all duration-300 ${
+                  i === 0 ? 'border-yellow-400/40 -translate-y-2' : i === 1 ? 'border-slate-400/40' : 'border-orange-400/40'
+                }`}
               >
-                <div className="text-3xl mb-2">{creator.badge}</div>
-                <div className="text-4xl mb-2">{creator.emoji}</div>
-                <div className="text-cyan-400 font-bold text-xs tracking-widest truncate">{creator.name}</div>
-                <div className="text-slate-500 text-xs mt-1">{creator.views} views</div>
+                <div className="text-3xl mb-2">{BADGES[i]}</div>
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl font-black text-black mx-auto mb-2">
+                  {creator.username?.[0]?.toUpperCase() || 'G'}
+                </div>
+                <div className="text-cyan-400 font-bold text-xs tracking-widest truncate">@{creator.username}</div>
+                <div className="text-slate-500 text-xs mt-1">{formatNum(creator.followers)} followers</div>
               </div>
             ))}
           </div>
         )}
 
-        {activeTab === 'Clips' && (
+        {activeTab === 'Clips' && topClips.length > 0 && (
           <div className="grid grid-cols-3 gap-4 mb-8">
-            {TOP_CLIPS.slice(0, 3).map((clip, i) => (
+            {topClips.map((clip, i) => (
               <div
-                key={clip.rank}
-                className={`bg-[#0b1425] border rounded-xl p-4 text-center transition-all duration-300 ${i === 0 ? 'border-yellow-400/40 -translate-y-2' : i === 1 ? 'border-slate-400/40' : 'border-orange-400/40'}`}
+                key={clip.id}
+                onClick={() => navigate(`/clip/${clip.id}`)}
+                className={`bg-[#0b1425] border rounded-xl p-4 text-center cursor-pointer transition-all duration-300 hover:brightness-110 ${
+                  i === 0 ? 'border-yellow-400/40 -translate-y-2' : i === 1 ? 'border-slate-400/40' : 'border-orange-400/40'
+                }`}
               >
-                <div className="text-3xl mb-2">{clip.badge}</div>
-                <div className="text-4xl mb-2">{clip.emoji}</div>
+                <div className="text-3xl mb-2">{BADGES[i]}</div>
+                <div className="text-4xl mb-2">{clip.emoji || '🎮'}</div>
                 <div className="text-white font-bold text-xs truncate">{clip.title}</div>
-                <div className="text-slate-500 text-xs mt-1">👁 {clip.views}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'Music' && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {TOP_MUSIC.slice(0, 3).map((track, i) => (
-              <div
-                key={track.rank}
-                className={`bg-[#0b1425] border rounded-xl p-4 text-center transition-all duration-300 ${i === 0 ? 'border-yellow-400/40 -translate-y-2' : i === 1 ? 'border-slate-400/40' : 'border-orange-400/40'}`}
-              >
-                <div className="text-3xl mb-2">{track.badge}</div>
-                <div className="text-4xl mb-2">🎵</div>
-                <div className="text-white font-bold text-xs truncate">{track.name}</div>
-                <div className="text-slate-500 text-xs mt-1">▶ {track.plays}</div>
+                <div className="text-slate-500 text-xs mt-1">👁 {formatNum(clip.views)}</div>
               </div>
             ))}
           </div>
@@ -120,68 +197,94 @@ function Leaderboard() {
 
         {/* Full List */}
         <div className="flex flex-col gap-3">
-          {activeTab === 'Creators' && TOP_CREATORS.map(creator => (
-            <div key={creator.rank} className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer ${creator.rank <= 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'}`}>
-              <div className="w-8 text-center font-black text-sm" style={{ fontFamily: 'monospace', color: creator.rank === 1 ? '#fbbf24' : creator.rank === 2 ? '#94a3b8' : creator.rank === 3 ? '#fb923c' : '#475569' }}>
-                {creator.badge || `#${creator.rank}`}
+
+          {activeTab === 'Creators' && creators.length === 0 && (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4">🏆</div>
+              <p className="text-slate-400">No creators yet — be the first!</p>
+            </div>
+          )}
+
+          {activeTab === 'Creators' && creators.map((creator, i) => (
+            <div
+              key={creator.user_id}
+              className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer ${
+                i < 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'
+              }`}
+            >
+              <div className="w-8 text-center font-black text-sm flex-shrink-0" style={{
+                fontFamily: 'monospace',
+                color: i < 3 ? RANK_COLORS[i] : '#475569'
+              }}>
+                {i < 3 ? BADGES[i] : `#${i + 1}`}
               </div>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-lg flex-shrink-0">
-                {creator.emoji}
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm font-black text-black flex-shrink-0">
+                {creator.username?.[0]?.toUpperCase() || 'G'}
               </div>
               <div className="flex-1">
-                <div className="text-cyan-400 font-bold text-sm">{creator.name}</div>
-                <div className="text-slate-500 text-xs mt-0.5">{creator.bio}</div>
+                <div className="text-cyan-400 font-bold text-sm">@{creator.username}</div>
+                <div className="text-slate-500 text-xs mt-0.5">{creator.bio || 'FragBeats Creator'} • {creator.clips} clips</div>
               </div>
               <div className="text-right hidden sm:block">
-                <div className="text-white text-xs font-bold">{creator.views}</div>
+                <div className="text-white text-xs font-bold">{formatNum(creator.views)}</div>
                 <div className="text-slate-600 text-xs">total views</div>
               </div>
               <div className="text-right">
-                <div className="text-white text-xs font-bold">{creator.followers}</div>
+                <div className="text-white text-xs font-bold">{formatNum(creator.followers)}</div>
                 <div className="text-slate-600 text-xs">followers</div>
               </div>
             </div>
           ))}
 
-          {activeTab === 'Clips' && TOP_CLIPS.map(clip => (
-            <div key={clip.rank} className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer ${clip.rank <= 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'}`}>
-              <div className="w-8 text-center font-black text-sm" style={{ fontFamily: 'monospace', color: clip.rank === 1 ? '#fbbf24' : clip.rank === 2 ? '#94a3b8' : clip.rank === 3 ? '#fb923c' : '#475569' }}>
-                {clip.badge || `#${clip.rank}`}
+          {activeTab === 'Clips' && clips.length === 0 && (
+            <div className="text-center py-20">
+              <div className="text-5xl mb-4">🎮</div>
+              <p className="text-slate-400">No clips yet — upload the first one!</p>
+              <button
+                onClick={() => navigate('/upload')}
+                className="mt-4 bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-2 rounded font-black text-xs tracking-widest"
+                style={{ fontFamily: 'monospace' }}
+              >
+                UPLOAD CLIP
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'Clips' && clips.map((clip, i) => (
+            <div
+              key={clip.id}
+              onClick={() => navigate(`/clip/${clip.id}`)}
+              className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer ${
+                i < 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'
+              }`}
+            >
+              <div className="w-8 text-center font-black text-sm flex-shrink-0" style={{
+                fontFamily: 'monospace',
+                color: i < 3 ? RANK_COLORS[i] : '#475569'
+              }}>
+                {i < 3 ? BADGES[i] : `#${i + 1}`}
               </div>
-              <div className="w-10 h-10 rounded-lg bg-[#040810] flex items-center justify-center text-xl flex-shrink-0">
-                {clip.emoji}
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-xl flex-shrink-0"
+                style={{ background: `${clip.color || gameColors[clip.game] || '#00f5ff'}22` }}
+              >
+                {clip.emoji || '🎮'}
               </div>
               <div className="flex-1">
                 <div className="text-white font-bold text-sm">{clip.title}</div>
-                <div className="text-slate-500 text-xs mt-0.5">{clip.creator} • {clip.game}</div>
+                <div className="text-slate-500 text-xs mt-0.5">
+                  @{clip.creatorUsername} •{' '}
+                  <span style={{ color: clip.color || gameColors[clip.game] || '#00f5ff' }}>{clip.game}</span>
+                </div>
               </div>
               <div className="text-right">
-                <div className="text-white text-xs font-bold">👁 {clip.views}</div>
-                <div className="text-slate-600 text-xs">❤️ {clip.likes}</div>
+                <div className="text-white text-xs font-bold">👁 {formatNum(clip.views)}</div>
+                <div className="text-slate-600 text-xs">❤️ {formatNum(clip.likes)}</div>
               </div>
             </div>
           ))}
 
-          {activeTab === 'Music' && TOP_MUSIC.map(track => (
-            <div key={track.rank} className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer ${track.rank <= 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'}`}>
-              <div className="w-8 text-center font-black text-sm" style={{ fontFamily: 'monospace', color: track.rank === 1 ? '#fbbf24' : track.rank === 2 ? '#94a3b8' : track.rank === 3 ? '#fb923c' : '#475569' }}>
-                {track.badge || `#${track.rank}`}
-              </div>
-              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-xl flex-shrink-0">
-                🎵
-              </div>
-              <div className="flex-1">
-                <div className="text-white font-bold text-sm">{track.name}</div>
-                <div className="text-slate-500 text-xs mt-0.5">{track.artist} • {track.genre}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-white text-xs font-bold">▶ {track.plays}</div>
-                <div className="text-slate-600 text-xs">{track.duration}</div>
-              </div>
-            </div>
-          ))}
         </div>
-
       </div>
       <Footer />
     </div>

@@ -1,60 +1,56 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
-const ALL_CLIPS = [
-  { id: 1, type: 'clip', game: 'BGMI', title: 'Insane 1v4 clutch', creator: '@fragkingAman', views: '128K', emoji: '🎮', color: '#00f5ff' },
-  { id: 2, type: 'clip', game: 'Valorant', title: 'Ace round highlight', creator: '@neonwolf99', views: '94K', emoji: '🔫', color: '#bf00ff' },
-  { id: 3, type: 'clip', game: 'Free Fire', title: 'Headshot compilation', creator: '@drip_editz', views: '211K', emoji: '🔥', color: '#ff6b35' },
-  { id: 4, type: 'clip', game: 'COD Mobile', title: 'Solo win gameplay', creator: '@ghostfrags', views: '76K', emoji: '💀', color: '#00f5ff' },
-]
+const TABS = ['All', 'Clips', 'Creators']
 
-const ALL_CREATORS = [
-  { id: 1, type: 'creator', name: '@fragkingAman', bio: 'BGMI Conqueror • Lo-fi enthusiast', clips: 3, followers: '1.2K', emoji: '🎮' },
-  { id: 2, type: 'creator', name: '@neonwolf99', bio: 'Valorant Radiant • Synthwave lover', clips: 8, followers: '4.5K', emoji: '🔫' },
-  { id: 3, type: 'creator', name: '@drip_editz', bio: 'Free Fire • Edit lord', clips: 15, followers: '12K', emoji: '🔥' },
-  { id: 4, type: 'creator', name: '@ghostfrags', bio: 'COD Mobile • Night grinder', clips: 6, followers: '2.8K', emoji: '💀' },
-]
-
-const ALL_TRACKS = [
-  { id: 1, type: 'track', name: 'Chill Lo-fi Vol.3', artist: 'FragBeats Studio', genre: 'Lo-fi', duration: '3:24' },
-  { id: 2, type: 'track', name: 'Midnight Vibes', artist: 'NeonWave', genre: 'Synthwave', duration: '2:58' },
-  { id: 3, type: 'track', name: 'Deep Focus', artist: 'MindWave', genre: 'Ambient', duration: '5:01' },
-  { id: 4, type: 'track', name: 'Urban Lo-fi', artist: 'CityBeats', genre: 'Lo-fi', duration: '2:33' },
-]
-
-const TABS = ['All', 'Clips', 'Creators', 'Music']
+const gameColors = {
+  'BGMI': '#00f5ff', 'Valorant': '#bf00ff', 'Free Fire': '#ff6b35',
+  'COD Mobile': '#ff2d55', 'GTA V': '#ffd700', 'Other': '#00f5ff'
+}
 
 function Search() {
   const [query, setQuery] = useState('')
   const [activeTab, setActiveTab] = useState('All')
+  const [clips, setClips] = useState([])
+  const [creators, setCreators] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
   const navigate = useNavigate()
 
-  const q = query.toLowerCase()
+  const handleSearch = useCallback(async (q) => {
+    setQuery(q)
+    if (!q.trim()) {
+      setClips([]); setCreators([]); setSearched(false); return
+    }
+    setLoading(true)
+    setSearched(true)
 
-  const filteredClips = ALL_CLIPS.filter(c =>
-    c.title.toLowerCase().includes(q) ||
-    c.creator.toLowerCase().includes(q) ||
-    c.game.toLowerCase().includes(q)
-  )
+    // Search clips by title or game
+    const { data: clipData } = await supabase
+      .from('clips')
+      .select('*')
+      .or(`title.ilike.%${q}%,game.ilike.%${q}%,music.ilike.%${q}%`)
+      .order('views', { ascending: false })
+      .limit(10)
 
-  const filteredCreators = ALL_CREATORS.filter(c =>
-    c.name.toLowerCase().includes(q) ||
-    c.bio.toLowerCase().includes(q)
-  )
+    // Search creators by username
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('*')
+      .ilike('username', `%${q}%`)
+      .limit(10)
 
-  const filteredTracks = ALL_TRACKS.filter(t =>
-    t.name.toLowerCase().includes(q) ||
-    t.artist.toLowerCase().includes(q) ||
-    t.genre.toLowerCase().includes(q)
-  )
+    if (clipData) setClips(clipData)
+    if (profileData) setCreators(profileData)
+    setLoading(false)
+  }, [])
 
   const showClips = activeTab === 'All' || activeTab === 'Clips'
   const showCreators = activeTab === 'All' || activeTab === 'Creators'
-  const showTracks = activeTab === 'All' || activeTab === 'Music'
-
-  const totalResults = filteredClips.length + filteredCreators.length + filteredTracks.length
+  const totalResults = clips.length + creators.length
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -62,7 +58,6 @@ function Search() {
 
       <div className="max-w-3xl mx-auto px-8 pt-32 pb-16">
 
-        {/* Header */}
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// SEARCH</p>
         <h1 className="font-black text-4xl text-white mb-8" style={{ fontFamily: 'monospace' }}>
           Find Anything 🔍
@@ -73,13 +68,18 @@ function Search() {
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl">🔍</span>
           <input
             type="text"
-            placeholder="Search clips, creators, music..."
+            placeholder="Search clips, games, creators..."
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => handleSearch(e.target.value)}
             autoFocus
             className="w-full border border-cyan-500/20 rounded-xl pl-14 pr-4 py-4 text-lg outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600"
             style={{ background: 'var(--card)', color: 'var(--text)' }}
           />
+          {loading && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -88,9 +88,11 @@ function Search() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${activeTab === tab
-                ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
-                : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'}`}
+              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${
+                activeTab === tab
+                  ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'
+                  : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400'
+              }`}
               style={{ fontFamily: 'monospace' }}
             >
               {tab}
@@ -98,37 +100,56 @@ function Search() {
           ))}
         </div>
 
-        {/* Results */}
-        {query === '' ? (
+        {/* Empty state */}
+        {!searched && (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">🔍</div>
             <p className="text-slate-400 text-lg">Start typing to search</p>
-            <p className="text-slate-600 text-sm mt-2">Find clips, creators and music</p>
+            <p className="text-slate-600 text-sm mt-2">Find clips, games and creators</p>
           </div>
-        ) : totalResults === 0 ? (
+        )}
+
+        {/* No results */}
+        {searched && !loading && totalResults === 0 && (
           <div className="text-center py-20">
             <div className="text-6xl mb-4">💀</div>
             <p className="text-slate-400 text-lg">No results for "{query}"</p>
             <p className="text-slate-600 text-sm mt-2">Try a different search</p>
           </div>
-        ) : (
+        )}
+
+        {/* Results */}
+        {searched && !loading && totalResults > 0 && (
           <div className="flex flex-col gap-8">
 
             {/* Clips */}
-            {showClips && filteredClips.length > 0 && (
+            {showClips && clips.length > 0 && (
               <div>
-                <p className="text-cyan-400 text-xs tracking-widest uppercase mb-4">🎮 Clips ({filteredClips.length})</p>
+                <p className="text-cyan-400 text-xs tracking-widest uppercase mb-4">🎮 Clips ({clips.length})</p>
                 <div className="flex flex-col gap-3">
-                  {filteredClips.map(clip => (
-                    <div key={clip.id} className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200">
-                      <div className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0" style={{ background: `${clip.color}22` }}>
-                        {clip.emoji}
+                  {clips.map(clip => (
+                    <div
+                      key={clip.id}
+                      onClick={() => navigate(`/clip/${clip.id}`)}
+                      className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200 group"
+                    >
+                      <div
+                        className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl flex-shrink-0"
+                        style={{ background: `${clip.color || gameColors[clip.game] || '#00f5ff'}22` }}
+                      >
+                        {clip.emoji || '🎮'}
                       </div>
                       <div className="flex-1">
-                        <div className="text-white font-bold text-sm">{clip.title}</div>
-                        <div className="text-slate-500 text-xs mt-0.5">{clip.creator} • {clip.game} • 👁 {clip.views}</div>
+                        <div className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors duration-200">
+                          {clip.title}
+                        </div>
+                        <div className="text-slate-500 text-xs mt-0.5">
+                          <span style={{ color: clip.color || gameColors[clip.game] || '#00f5ff' }}>{clip.game}</span>
+                          {' • '}🎵 {clip.music}
+                          {' • '}👁 {clip.views || 0}
+                        </div>
                       </div>
-                      <div className="text-slate-600 text-xs">▶</div>
+                      <div className="text-slate-600 text-xs group-hover:text-cyan-400 transition-colors duration-200">▶</div>
                     </div>
                   ))}
                 </div>
@@ -136,44 +157,24 @@ function Search() {
             )}
 
             {/* Creators */}
-            {showCreators && filteredCreators.length > 0 && (
+            {showCreators && creators.length > 0 && (
               <div>
-                <p className="text-cyan-400 text-xs tracking-widest uppercase mb-4">👤 Creators ({filteredCreators.length})</p>
+                <p className="text-cyan-400 text-xs tracking-widest uppercase mb-4">👤 Creators ({creators.length})</p>
                 <div className="flex flex-col gap-3">
-                  {filteredCreators.map(creator => (
-                    <div key={creator.id} onClick={() => navigate('/profile')} className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl flex-shrink-0">
-                        {creator.emoji}
+                  {creators.map(creator => (
+                    <div
+                      key={creator.user_id}
+                      onClick={() => navigate('/profile')}
+                      className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl font-black text-black flex-shrink-0">
+                        {creator.username?.[0]?.toUpperCase() || 'G'}
                       </div>
                       <div className="flex-1">
-                        <div className="text-cyan-400 font-bold text-sm">{creator.name}</div>
-                        <div className="text-slate-500 text-xs mt-0.5">{creator.bio}</div>
+                        <div className="text-cyan-400 font-bold text-sm">@{creator.username}</div>
+                        <div className="text-slate-500 text-xs mt-0.5">{creator.bio || 'FragBeats Creator'}</div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-white text-xs font-bold">{creator.followers}</div>
-                        <div className="text-slate-600 text-xs">followers</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tracks */}
-            {showTracks && filteredTracks.length > 0 && (
-              <div>
-                <p className="text-cyan-400 text-xs tracking-widest uppercase mb-4">🎵 Music ({filteredTracks.length})</p>
-                <div className="flex flex-col gap-3">
-                  {filteredTracks.map(track => (
-                    <div key={track.id} onClick={() => navigate('/music')} className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200">
-                      <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center text-xl flex-shrink-0">
-                        🎵
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white font-bold text-sm">{track.name}</div>
-                        <div className="text-slate-500 text-xs mt-0.5">{track.artist} • {track.genre}</div>
-                      </div>
-                      <div className="text-slate-500 text-xs">{track.duration}</div>
+                      <div className="text-slate-600 text-xs">→</div>
                     </div>
                   ))}
                 </div>

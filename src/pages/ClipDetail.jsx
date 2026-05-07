@@ -48,6 +48,9 @@ function ClipDetail() {
       setClip(data)
       setLikeCount(data.likes || 0)
       fetchRelatedClips(data.game, data.id)
+
+      // ✅ Increment view count
+      await supabase.from('clips').update({ views: (data.views || 0) + 1 }).eq('id', id)
     }
     setLoading(false)
   }
@@ -98,15 +101,11 @@ function ClipDetail() {
   }
 
   async function sendNotification(toUserId, type, message) {
-    // Don't notify yourself
     if (!user || user.id === toUserId) return
     await supabase.from('notifications').insert({
-      user_id: toUserId,
-      from_user_id: user.id,
-      type,
-      clip_id: type !== 'follow' ? parseInt(id) : null,
-      message,
-      read: false,
+      user_id: toUserId, from_user_id: user.id,
+      type, clip_id: type !== 'follow' ? parseInt(id) : null,
+      message, read: false,
     })
   }
 
@@ -114,18 +113,14 @@ function ClipDetail() {
     if (!user) { navigate('/auth'); return }
     if (likeLoading) return
     setLikeLoading(true)
-
     if (liked) {
       await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', id)
       await supabase.from('clips').update({ likes: likeCount - 1 }).eq('id', id)
-      setLiked(false)
-      setLikeCount(prev => prev - 1)
+      setLiked(false); setLikeCount(prev => prev - 1)
     } else {
       await supabase.from('clip_likes').insert({ user_id: user.id, clip_id: id })
       await supabase.from('clips').update({ likes: likeCount + 1 }).eq('id', id)
-      setLiked(true)
-      setLikeCount(prev => prev + 1)
-      // Send like notification to clip owner
+      setLiked(true); setLikeCount(prev => prev + 1)
       await sendNotification(clip.user_id, 'like', `liked your clip "${clip.title}"`)
     }
     setLikeLoading(false)
@@ -135,16 +130,12 @@ function ClipDetail() {
     if (!user) { navigate('/auth'); return }
     if (followLoading || user.id === clip?.user_id) return
     setFollowLoading(true)
-
     if (following) {
       await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
-      setFollowing(false)
-      setFollowerCount(prev => prev - 1)
+      setFollowing(false); setFollowerCount(prev => prev - 1)
     } else {
       await supabase.from('follows').insert({ follower_id: user.id, following_id: clip.user_id })
-      setFollowing(true)
-      setFollowerCount(prev => prev + 1)
-      // Send follow notification
+      setFollowing(true); setFollowerCount(prev => prev + 1)
       await sendNotification(clip.user_id, 'follow', 'started following you')
     }
     setFollowLoading(false)
@@ -154,13 +145,10 @@ function ClipDetail() {
     if (!newComment.trim()) return
     if (!user) { navigate('/auth'); return }
     setPosting(true)
-
     const { data, error } = await supabase
       .from('comments')
       .insert({ user_id: user.id, clip_id: parseInt(id), text: newComment.trim() })
-      .select()
-      .single()
-
+      .select().single()
     if (!error && data) {
       if (!usernames[user.id]) {
         const { data: profile } = await supabase.from('profiles').select('username').eq('user_id', user.id).single()
@@ -168,7 +156,6 @@ function ClipDetail() {
       }
       setComments(prev => [data, ...prev])
       setNewComment('')
-      // Send comment notification to clip owner
       await sendNotification(clip.user_id, 'comment', `commented on your clip "${clip.title}"`)
     }
     setPosting(false)
@@ -213,7 +200,6 @@ function ClipDetail() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <Navbar />
-
       <div className="max-w-6xl mx-auto px-8 pt-32 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -249,7 +235,7 @@ function ClipDetail() {
                 <div>
                   <h1 className="font-black text-2xl text-white mb-1" style={{ fontFamily: 'monospace' }}>{clip.title} {clip.emoji}</h1>
                   <div className="flex items-center gap-3 text-slate-500 text-sm">
-                    <span>👁 {clip.views || 0} views</span>
+                    <span>👁 {(clip.views || 0) + 1} views</span>
                     <span>•</span>
                     <span className="text-cyan-400 font-bold">{clip.game}</span>
                     <span>•</span>
@@ -257,17 +243,12 @@ function ClipDetail() {
                   </div>
                 </div>
                 <div className="flex gap-3 flex-shrink-0">
-                  <button
-                    onClick={handleLike}
-                    disabled={likeLoading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${liked ? 'border-pink-400 text-pink-400 bg-pink-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'}`}
-                  >
+                  <button onClick={handleLike} disabled={likeLoading}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${liked ? 'border-pink-400 text-pink-400 bg-pink-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'}`}>
                     {liked ? '❤️' : '🤍'} {likeCount}
                   </button>
-                  <button
-                    onClick={() => setShareOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200"
-                  >
+                  <button onClick={() => setShareOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200">
                     🔗 Share
                   </button>
                 </div>
@@ -283,12 +264,9 @@ function ClipDetail() {
                   </div>
                 </div>
                 {!isOwnClip ? (
-                  <button
-                    onClick={handleFollow}
-                    disabled={followLoading}
+                  <button onClick={handleFollow} disabled={followLoading}
                     className={`px-4 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 disabled:opacity-50 ${following ? 'border border-cyan-500/20 text-slate-400 hover:border-red-400 hover:text-red-400' : 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110'}`}
-                    style={{ fontFamily: 'monospace' }}
-                  >
+                    style={{ fontFamily: 'monospace' }}>
                     {followLoading ? '...' : following ? 'Following ✓' : 'Follow'}
                   </button>
                 ) : (
@@ -300,25 +278,17 @@ function ClipDetail() {
             {/* Comments */}
             <div>
               <h3 className="font-black text-lg text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>COMMENTS ({comments.length})</h3>
-
               <div className="flex gap-3 mb-6">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">🎮</div>
                 <div className="flex-1 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder={user ? 'Drop a comment...' : 'Login to comment...'}
-                    value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
+                  <input type="text" placeholder={user ? 'Drop a comment...' : 'Login to comment...'}
+                    value={newComment} onChange={e => setNewComment(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleComment()}
                     disabled={!user || posting}
-                    className="flex-1 bg-[#0b1425] border border-cyan-500/20 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600 disabled:opacity-50"
-                  />
-                  <button
-                    onClick={handleComment}
-                    disabled={!user || posting || !newComment.trim()}
+                    className="flex-1 bg-[#0b1425] border border-cyan-500/20 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-cyan-400 transition-colors duration-200 placeholder-slate-600 disabled:opacity-50" />
+                  <button onClick={handleComment} disabled={!user || posting || !newComment.trim()}
                     className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-4 py-2 rounded-lg font-black text-xs tracking-widest hover:brightness-110 transition-all duration-200 disabled:opacity-50"
-                    style={{ fontFamily: 'monospace' }}
-                  >
+                    style={{ fontFamily: 'monospace' }}>
                     {posting ? '...' : 'POST'}
                   </button>
                 </div>
@@ -330,8 +300,7 @@ function ClipDetail() {
                     <div key={i} className="flex gap-3 animate-pulse">
                       <div className="w-9 h-9 rounded-full bg-cyan-500/10 flex-shrink-0" />
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
-                        <div className="h-3 bg-cyan-500/10 rounded w-1/4 mb-2" />
-                        <div className="h-3 bg-cyan-500/10 rounded w-3/4" />
+                        <div className="h-3 bg-cyan-500/10 rounded w-1/4 mb-2" /><div className="h-3 bg-cyan-500/10 rounded w-3/4" />
                       </div>
                     </div>
                   ))}
@@ -371,11 +340,8 @@ function ClipDetail() {
             <div className="flex flex-col gap-4">
               {relatedClips.length === 0 && <p className="text-slate-600 text-xs tracking-widest">No related clips yet</p>}
               {relatedClips.map(related => (
-                <div
-                  key={related.id}
-                  onClick={() => navigate(`/clip/${related.id}`)}
-                  className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:border-cyan-400/30 transition-all duration-300 group"
-                >
+                <div key={related.id} onClick={() => navigate(`/clip/${related.id}`)}
+                  className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:border-cyan-400/30 transition-all duration-300 group">
                   <div className="h-24 flex items-center justify-center text-4xl relative"
                     style={{ background: `linear-gradient(135deg, #0b1425, ${related.color || '#00f5ff'}22)` }}>
                     {related.emoji || '🎮'}
@@ -395,7 +361,6 @@ function ClipDetail() {
 
         </div>
       </div>
-
       {shareOpen && <ShareModal clip={clip} onClose={() => setShareOpen(false)} />}
       <Footer />
     </div>

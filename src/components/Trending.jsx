@@ -12,25 +12,18 @@ function Trending() {
   const [usernames, setUsernames] = useState({})
   const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchTrending()
-  }, [])
+  useEffect(() => { fetchTrending() }, [])
 
   async function fetchTrending() {
     const { data } = await supabase
-      .from('clips')
-      .select('*')
-      .order('views', { ascending: false })
-      .limit(4)
+      .from('clips').select('*').order('views', { ascending: false }).limit(4)
 
     if (data) {
       setClips(data)
       const uniqueIds = [...new Set(data.map(c => c.user_id).filter(Boolean))]
       if (uniqueIds.length > 0) {
         const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, username')
-          .in('user_id', uniqueIds)
+          .from('profiles').select('user_id, username').in('user_id', uniqueIds)
         if (profiles) {
           const map = {}
           profiles.forEach(p => { map[p.user_id] = p.username })
@@ -56,7 +49,6 @@ function Trending() {
           The clips everyone's watching. Your turn to drop something bigger.
         </p>
 
-        {/* Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {clips.map(clip => {
             const color = clip.color || gameColors[clip.game] || '#00f5ff'
@@ -67,19 +59,21 @@ function Trending() {
                 className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:-translate-y-2 transition-all duration-300 hover:border-cyan-400/30 group"
               >
                 <div
-                  className="h-36 flex items-center justify-center text-5xl relative"
+                  className="h-36 flex items-center justify-center relative overflow-hidden"
                   style={{ background: `linear-gradient(135deg, #0b1425, ${color}22)`, borderBottom: `2px solid ${color}33` }}
                 >
-                  {clip.emoji || '🎮'}
+                  {clip.thumbnail_url ? (
+                    <img src={clip.thumbnail_url} alt={clip.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-5xl">{clip.emoji || '🎮'}</span>
+                  )}
                   <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
                     ▶
                   </div>
                 </div>
 
                 <div className="p-4">
-                  <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color }}>
-                    {clip.game}
-                  </div>
+                  <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color }}>{clip.game}</div>
                   <div className="text-white text-sm font-bold mb-1 truncate">{clip.title}</div>
                   <div className="text-slate-400 text-xs mb-3">{getUsername(clip.user_id)}</div>
                   <div className="flex justify-between items-center">
@@ -103,7 +97,6 @@ function Trending() {
             </button>
           </div>
         )}
-
       </div>
     </section>
   )

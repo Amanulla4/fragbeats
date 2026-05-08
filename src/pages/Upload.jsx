@@ -22,12 +22,43 @@ const gameEmojis = {
 }
 
 const gameColors = {
-  'BGMI': '#00f5ff',
-  'Valorant': '#bf00ff',
-  'Free Fire': '#ff6b35',
-  'COD Mobile': '#ff2d55',
-  'GTA V': '#ffd700',
-  'Other': '#00f5ff'
+  'BGMI': '#00f5ff', 'Valorant': '#bf00ff', 'Free Fire': '#ff6b35',
+  'COD Mobile': '#ff2d55', 'GTA V': '#ffd700', 'Other': '#00f5ff'
+}
+
+// Extract first frame from video as a blob
+function extractThumbnail(videoFile) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.muted = true
+    video.playsInline = true
+
+    const url = URL.createObjectURL(videoFile)
+    video.src = url
+
+    video.onloadeddata = () => {
+      video.currentTime = 1 // grab frame at 1 second
+    }
+
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 360
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url)
+        resolve(blob)
+      }, 'image/jpeg', 0.8)
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null) // fail silently
+    }
+  })
 }
 
 function Upload() {
@@ -38,6 +69,7 @@ function Upload() {
   const [step, setStep] = useState(1)
   const [dragging, setDragging] = useState(false)
   const [videoFile, setVideoFile] = useState(null)
+  const [thumbnailPreview, setThumbnailPreview] = useState(null)
   const [selectedGame, setSelectedGame] = useState('')
   const [selectedTrack, setSelectedTrack] = useState(null)
   const [title, setTitle] = useState('')
@@ -46,7 +78,7 @@ function Upload() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
 
-  function handleFileSelect(file) {
+  async function handleFileSelect(file) {
     if (!file) return
     if (!file.type.startsWith('video/')) {
       setError('Please upload a video file (MP4, MOV)')
@@ -58,18 +90,22 @@ function Upload() {
     }
     setError('')
     setVideoFile(file)
+
+    // Generate thumbnail preview
+    const blob = await extractThumbnail(file)
+    if (blob) {
+      setThumbnailPreview(URL.createObjectURL(blob))
+    }
   }
 
   function handleDrop(e) {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files[0]
-    handleFileSelect(file)
+    handleFileSelect(e.dataTransfer.files[0])
   }
 
   function handleFileInput(e) {
-    const file = e.target.files[0]
-    handleFileSelect(file)
+    handleFileSelect(e.target.files[0])
   }
 
   async function handleSubmit() {
@@ -78,33 +114,53 @@ function Upload() {
     setError('')
 
     try {
-      // 1. Upload video to Supabase Storage
       const fileExt = videoFile.name.split('.').pop()
-      const fileName = `${user.id}_${Date.now()}.${fileExt}`
+      const baseName = `${user.id}_${Date.now()}`
 
-      setUploadProgress(20)
+      setUploadProgress(10)
 
-      const { data: storageData, error: storageError } = await supabase.storage
+      // 1. Extract and upload thumbnail
+      let thumbnailUrl = null
+      const thumbBlob = await extractThumbnail(videoFile)
+      if (thumbBlob) {
+        const { data: thumbData, error: thumbError } = await supabase.storage
+          .from('clips')
+          .upload(`${baseName}_thumb.jpg`, thumbBlob, {
+            contentType: 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false,
+          })
+
+        if (!thumbError) {
+          const { data: thumbUrl } = supabase.storage
+            .from('clips')
+            .getPublicUrl(`${baseName}_thumb.jpg`)
+          thumbnailUrl = thumbUrl.publicUrl
+        }
+      }
+
+      setUploadProgress(40)
+
+      // 2. Upload video
+      const { error: storageError } = await supabase.storage
         .from('clips')
-        .upload(fileName, videoFile, {
+        .upload(`${baseName}.${fileExt}`, videoFile, {
           cacheControl: '3600',
           upsert: false,
         })
 
       if (storageError) throw storageError
 
-      setUploadProgress(70)
+      setUploadProgress(80)
 
-      // 2. Get public URL
+      // 3. Get video public URL
       const { data: urlData } = supabase.storage
         .from('clips')
-        .getPublicUrl(fileName)
-
-      const videoUrl = urlData.publicUrl
+        .getPublicUrl(`${baseName}.${fileExt}`)
 
       setUploadProgress(90)
 
-      // 3. Save clip to database
+      // 4. Save to database
       const selectedTrackData = MUSIC_TRACKS.find(t => t.id === selectedTrack)
 
       const { error: dbError } = await supabase.from('clips').insert({
@@ -113,7 +169,8 @@ function Upload() {
         music: selectedTrackData?.name || 'Unknown',
         emoji: gameEmojis[selectedGame] || '🎮',
         color: gameColors[selectedGame] || '#00f5ff',
-        video_url: videoUrl,
+        video_url: urlData.publicUrl,
+        thumbnail_url: thumbnailUrl,
         views: 0,
         likes: 0,
         user_id: user?.id,
@@ -138,9 +195,7 @@ function Upload() {
       <div className="min-h-screen bg-[#040810] flex items-center justify-center">
         <div className="text-center">
           <div className="text-7xl mb-6">🔥</div>
-          <h2 className="font-black text-4xl text-white mb-4" style={{ fontFamily: 'monospace' }}>
-            CLIP UPLOADED!
-          </h2>
+          <h2 className="font-black text-4xl text-white mb-4" style={{ fontFamily: 'monospace' }}>CLIP UPLOADED!</h2>
           <p className="text-slate-400 mb-2">Your frag is live on FragBeats 🎮</p>
           <p className="text-slate-600 text-sm">Redirecting to Explore...</p>
         </div>
@@ -155,12 +210,10 @@ function Upload() {
       <div className="max-w-2xl mx-auto px-8 pt-32 pb-16">
 
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// UPLOAD</p>
-        <h1 className="font-black text-4xl text-white mb-2" style={{ fontFamily: 'monospace' }}>
-          Drop Your Frag 🎮
-        </h1>
+        <h1 className="font-black text-4xl text-white mb-2" style={{ fontFamily: 'monospace' }}>Drop Your Frag 🎮</h1>
         <p className="text-slate-400 mb-10">Share your best gaming moment with the world</p>
 
-        {/* Steps indicator */}
+        {/* Steps */}
         <div className="flex items-center gap-3 mb-10">
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-3">
@@ -178,7 +231,6 @@ function Upload() {
           </span>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6">
             ❌ {error}
@@ -188,38 +240,41 @@ function Upload() {
         {/* STEP 1 */}
         {step === 1 && (
           <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="video/*"
-              onChange={handleFileInput}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileInput} className="hidden" />
             <div
               onDragOver={e => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-16 text-center cursor-pointer transition-all duration-300 ${
+              className={`border-2 border-dashed rounded-xl overflow-hidden text-center cursor-pointer transition-all duration-300 ${
                 dragging ? 'border-cyan-400 bg-cyan-500/10'
-                : videoFile ? 'border-green-400 bg-green-500/5'
+                : videoFile ? 'border-green-400'
                 : 'border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/5'
               }`}
             >
-              {videoFile ? (
-                <>
+              {videoFile && thumbnailPreview ? (
+                <div className="relative">
+                  <img src={thumbnailPreview} alt="thumbnail" className="w-full h-48 object-cover" />
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center">
+                    <div className="text-4xl mb-2">✅</div>
+                    <p className="text-green-400 font-bold tracking-widest text-sm" style={{ fontFamily: 'monospace' }}>CLIP READY!</p>
+                    <p className="text-slate-300 text-xs mt-1">{videoFile.name}</p>
+                    <p className="text-slate-500 text-xs">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+                  </div>
+                </div>
+              ) : videoFile ? (
+                <div className="p-16">
                   <div className="text-5xl mb-4">✅</div>
                   <p className="text-green-400 font-bold tracking-widest" style={{ fontFamily: 'monospace' }}>CLIP READY!</p>
                   <p className="text-slate-500 text-sm mt-2">{videoFile.name}</p>
-                  <p className="text-slate-600 text-xs mt-1">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</p>
-                </>
+                </div>
               ) : (
-                <>
+                <div className="p-16">
                   <div className="text-5xl mb-4">🎮</div>
                   <p className="text-white font-bold mb-2">Drag & drop your clip here</p>
                   <p className="text-slate-500 text-sm">or click to browse files</p>
                   <p className="text-slate-600 text-xs mt-4">MP4, MOV up to 500MB</p>
-                </>
+                </div>
               )}
             </div>
 
@@ -236,6 +291,14 @@ function Upload() {
         {/* STEP 2 */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
+            {/* Thumbnail preview */}
+            {thumbnailPreview && (
+              <div className="rounded-lg overflow-hidden border border-cyan-500/20">
+                <img src={thumbnailPreview} alt="thumbnail preview" className="w-full h-32 object-cover" />
+                <p className="text-slate-500 text-xs text-center py-2">Auto-generated thumbnail ✅</p>
+              </div>
+            )}
+
             <div>
               <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Clip Title</label>
               <input
@@ -269,11 +332,7 @@ function Upload() {
             </div>
 
             <div className="flex gap-3 mt-2">
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 py-3 rounded-lg font-black text-sm tracking-widest border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300"
-                style={{ fontFamily: 'monospace' }}
-              >
+              <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-lg font-black text-sm tracking-widest border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300" style={{ fontFamily: 'monospace' }}>
                 ← BACK
               </button>
               <button
@@ -310,11 +369,12 @@ function Upload() {
               ))}
             </div>
 
-            {/* Upload Progress */}
             {saving && (
               <div className="mb-6">
                 <div className="flex justify-between text-xs text-slate-400 mb-2">
-                  <span>Uploading your frag...</span>
+                  <span>
+                    {uploadProgress < 40 ? 'Generating thumbnail...' : uploadProgress < 80 ? 'Uploading video...' : 'Saving clip...'}
+                  </span>
                   <span>{uploadProgress}%</span>
                 </div>
                 <div className="w-full h-2 bg-[#0b1425] rounded-full overflow-hidden">
@@ -327,12 +387,9 @@ function Upload() {
             )}
 
             <div className="flex gap-3">
-              <button
-                onClick={() => setStep(2)}
-                disabled={saving}
+              <button onClick={() => setStep(2)} disabled={saving}
                 className="flex-1 py-3 rounded-lg font-black text-sm tracking-widest border border-cyan-500/20 text-slate-400 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-300 disabled:opacity-50"
-                style={{ fontFamily: 'monospace' }}
-              >
+                style={{ fontFamily: 'monospace' }}>
                 ← BACK
               </button>
               <button
@@ -341,7 +398,7 @@ function Upload() {
                 className={`flex-1 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${selectedTrack && !saving ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110' : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'}`}
                 style={{ fontFamily: 'monospace' }}
               >
-                {saving ? `UPLOADING ${uploadProgress}%...` : 'UPLOAD FRAG 🔥'}
+                {saving ? `${uploadProgress < 40 ? 'THUMBNAIL...' : uploadProgress < 80 ? 'UPLOADING...' : 'SAVING...'} ${uploadProgress}%` : 'UPLOAD FRAG 🔥'}
               </button>
             </div>
           </div>

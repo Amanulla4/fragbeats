@@ -4,6 +4,27 @@ import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
+// Bottom nav items — like Instagram/TikTok
+const BOTTOM_NAV = [
+  { icon: '🏠', label: 'Home', path: '/explore' },
+  { icon: '▶', label: 'Feed', path: '/feed' },
+  { icon: '➕', label: 'Upload', path: '/upload' },
+  { icon: '🔔', label: 'Activity', path: '/notifications' },
+  { icon: '👤', label: 'Profile', path: '/profile' },
+]
+
+const TOP_NAV = [
+  { label: 'Explore', path: '/explore' },
+  { label: '▶ Feed', path: '/feed' },
+  { label: 'Music', path: '/music' },
+  { label: '🏆', path: '/leaderboard' },
+  { label: 'Profile', path: '/profile' },
+  { label: '📊', path: '/analytics' },
+  { label: '🔍', path: '/search' },
+  { label: '🔔', path: '/notifications' },
+  { label: '⚙️', path: '/settings' },
+]
+
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -24,11 +45,7 @@ function Navbar() {
   }, [user])
 
   async function fetchUsername() {
-    const { data } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('user_id', user.id)
-      .single()
+    const { data } = await supabase.from('profiles').select('username').eq('user_id', user.id).single()
     if (data?.username) setUsername(data.username)
     else setUsername(user.email?.split('@')[0] || 'gamer')
   }
@@ -43,42 +60,31 @@ function Navbar() {
     navigate('/')
   }
 
-  // Hide navbar on feed page
+  // Hide everything on feed page
   if (location.pathname === '/feed') return null
-
-  const navLinks = [
-    { label: 'Explore', path: '/explore' },
-    { label: '▶ Feed', path: '/feed' },
-    { label: 'Music', path: '/music' },
-    { label: '🏆', path: '/leaderboard' },
-    { label: 'Profile', path: '/profile' },
-    { label: '📊', path: '/analytics' },
-    { label: '🔍', path: '/search' },
-    { label: '🔔', path: '/notifications' },
-    { label: '⚙️', path: '/settings' },
-  ]
 
   return (
     <>
+      {/* ── TOP NAVBAR (desktop + mobile top) ── */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 transition-all duration-300 ${scrolled ? 'backdrop-blur-lg border-b border-cyan-500/10' : ''}`}
         style={{ background: scrolled ? 'var(--bg)' : 'transparent' }}
       >
+        {/* Logo */}
         <div onClick={() => handleNavClick('/')} className="font-black text-xl tracking-widest bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent cursor-pointer" style={{ fontFamily: 'monospace' }}>
           FRAGBEATS
         </div>
 
+        {/* Desktop nav links */}
         <ul className="hidden md:flex gap-8 list-none">
-          {navLinks.map(link => (
+          {TOP_NAV.map(link => (
             <li key={link.label}>
               <span
                 onClick={() => handleNavClick(link.path)}
                 className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 ${
-                  location.pathname === link.path
-                    ? 'text-cyan-400'
-                    : link.path === '/feed'
-                    ? 'text-purple-400 hover:text-purple-300'
-                    : 'text-slate-400 hover:text-cyan-400'
+                  location.pathname === link.path ? 'text-cyan-400'
+                  : link.path === '/feed' ? 'text-purple-400 hover:text-purple-300'
+                  : 'text-slate-400 hover:text-cyan-400'
                 }`}
               >
                 {link.label}
@@ -87,35 +93,25 @@ function Navbar() {
           ))}
         </ul>
 
+        {/* Desktop right actions */}
         <div className="hidden md:flex gap-3 items-center">
           <button onClick={toggleTheme} className="w-10 h-10 rounded-full border border-cyan-500/20 flex items-center justify-center text-lg hover:border-cyan-400 transition-all duration-200">
             {isDark ? '☀️' : '🌙'}
           </button>
-
           {user ? (
             <>
-              <div className="text-cyan-400 text-xs tracking-widest hidden lg:block font-bold" style={{ fontFamily: 'monospace' }}>
-                @{username}
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="border border-red-500/30 text-red-400 px-5 py-2 rounded text-sm tracking-widest hover:border-red-400 hover:text-red-300 transition-all duration-200 bg-transparent"
-              >
-                Logout
-              </button>
+              <div className="text-cyan-400 text-xs tracking-widest hidden lg:block font-bold" style={{ fontFamily: 'monospace' }}>@{username}</div>
+              <button onClick={handleSignOut} className="border border-red-500/30 text-red-400 px-5 py-2 rounded text-sm tracking-widest hover:border-red-400 hover:text-red-300 transition-all duration-200 bg-transparent">Logout</button>
             </>
           ) : (
             <>
-              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">
-                Log In
-              </button>
-              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-2 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
-                JOIN FREE
-              </button>
+              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-2 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent">Log In</button>
+              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-2 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>JOIN FREE</button>
             </>
           )}
         </div>
 
+        {/* Mobile top right — theme + hamburger */}
         <div className="flex md:hidden gap-3 items-center">
           <button onClick={toggleTheme} className="w-9 h-9 rounded-full border border-cyan-500/20 flex items-center justify-center text-base hover:border-cyan-400 transition-all duration-200">
             {isDark ? '☀️' : '🌙'}
@@ -131,40 +127,66 @@ function Navbar() {
         </div>
       </nav>
 
+      {/* ── MOBILE DROPDOWN MENU ── */}
       {menuOpen && (
         <div className="fixed top-16 left-0 right-0 z-40 border-b border-cyan-500/10 backdrop-blur-lg px-8 py-6 flex flex-col gap-4 md:hidden" style={{ background: 'var(--bg)' }}>
           {user && (
-            <div className="text-cyan-400 text-xs tracking-widest font-bold pb-2 border-b border-cyan-500/10" style={{ fontFamily: 'monospace' }}>
-              @{username}
-            </div>
+            <div className="text-cyan-400 text-xs tracking-widest font-bold pb-2 border-b border-cyan-500/10" style={{ fontFamily: 'monospace' }}>@{username}</div>
           )}
-          {navLinks.map(link => (
-            <span
-              key={link.label}
-              onClick={() => handleNavClick(link.path)}
-              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${
-                link.path === '/feed' ? 'text-purple-400' : 'text-slate-400 hover:text-cyan-400'
-              }`}
-            >
+          {TOP_NAV.map(link => (
+            <span key={link.label} onClick={() => handleNavClick(link.path)}
+              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${link.path === '/feed' ? 'text-purple-400' : 'text-slate-400 hover:text-cyan-400'}`}>
               {link.label}
             </span>
           ))}
           {user ? (
-            <button onClick={handleSignOut} className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left">
-              Logout
-            </button>
+            <button onClick={handleSignOut} className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left">Logout</button>
           ) : (
             <>
-              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-3 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent text-left">
-                Log In
-              </button>
-              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-3 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>
-                JOIN FREE
-              </button>
+              <button onClick={() => handleNavClick('/auth')} className="border border-cyan-500/20 text-slate-400 px-5 py-3 rounded text-sm tracking-widest hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200 bg-transparent text-left">Log In</button>
+              <button onClick={() => handleNavClick('/auth')} className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-5 py-3 rounded text-xs font-black tracking-widest hover:brightness-110 transition-all duration-200" style={{ fontFamily: 'monospace' }}>JOIN FREE</button>
             </>
           )}
         </div>
       )}
+
+      {/* ── MOBILE BOTTOM NAV BAR ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t border-cyan-500/10 backdrop-blur-lg"
+        style={{ background: 'rgba(4, 8, 16, 0.95)' }}>
+        <div className="flex items-center justify-around px-2 py-2">
+          {BOTTOM_NAV.map(item => {
+            const isActive = location.pathname === item.path
+            const isUpload = item.path === '/upload'
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNavClick(item.path)}
+                className="flex flex-col items-center gap-1 flex-1 py-1 transition-all duration-200"
+              >
+                {isUpload ? (
+                  // Upload button — special style like Instagram
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 flex items-center justify-center text-xl text-black shadow-lg shadow-cyan-500/30 -translate-y-2">
+                    ➕
+                  </div>
+                ) : (
+                  <>
+                    <span className={`text-2xl transition-all duration-200 ${isActive ? 'scale-110' : 'opacity-60'}`}>
+                      {item.icon}
+                    </span>
+                    <span className={`text-xs tracking-widest transition-all duration-200 ${isActive ? 'text-cyan-400 font-bold' : 'text-slate-600'}`}
+                      style={{ fontFamily: 'monospace', fontSize: '9px' }}>
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <div className="w-1 h-1 rounded-full bg-cyan-400" />
+                    )}
+                  </>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </>
   )
 }

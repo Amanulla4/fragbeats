@@ -22,16 +22,11 @@ function EditProfileModal({ username, bio, onClose, onSave }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
+      onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md bg-[#0b1425] border border-cyan-500/20 rounded-xl p-8 relative">
         <div className="absolute top-0 right-0 w-40 h-40 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
         <h2 className="font-black text-xl text-white tracking-widest mb-6" style={{ fontFamily: 'monospace' }}>EDIT PROFILE ✏️</h2>
-
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-4">❌ {error}</div>
-        )}
-
+        {error && <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-4">❌ {error}</div>}
         <div className="flex flex-col gap-4">
           <div>
             <label className="text-slate-400 text-xs tracking-widest uppercase mb-2 block">Username</label>
@@ -62,18 +57,15 @@ function EditProfileModal({ username, bio, onClose, onSave }) {
 
 function DeleteConfirmModal({ clip, onClose, onConfirm }) {
   const [deleting, setDeleting] = useState(false)
-
   async function handleDelete() {
     setDeleting(true)
     await onConfirm(clip)
     setDeleting(false)
   }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
       style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
+      onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-sm bg-[#0b1425] border border-red-500/30 rounded-xl p-8">
         <div className="text-5xl mb-4 text-center">🗑️</div>
         <h2 className="font-black text-xl text-white tracking-widest mb-2 text-center" style={{ fontFamily: 'monospace' }}>DELETE CLIP?</h2>
@@ -90,21 +82,71 @@ function DeleteConfirmModal({ clip, onClose, onConfirm }) {
   )
 }
 
+function ClipGrid({ clips, navigate, onDelete, showDelete = false }) {
+  if (clips.length === 0) return (
+    <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
+      <div className="text-5xl mb-4">🎮</div>
+      <p className="text-slate-400 text-sm tracking-widest">NO CLIPS HERE YET</p>
+    </div>
+  )
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {clips.map(clip => (
+        <div key={clip.id} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden hover:-translate-y-1 transition-all duration-300 hover:border-cyan-400/30 group relative">
+          {showDelete && (
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(clip) }}
+              className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-sm transition-all duration-200 hover:bg-red-500/80 text-slate-400"
+            >
+              🗑️
+            </button>
+          )}
+          <div
+            onClick={() => navigate(`/clip/${clip.id}`)}
+            className="h-36 flex items-center justify-center relative overflow-hidden cursor-pointer"
+            style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color || '#00f5ff'}22)`, borderBottom: `2px solid ${clip.color || '#00f5ff'}33` }}
+          >
+            {clip.thumbnail_url ? (
+              <img src={clip.thumbnail_url} alt={clip.title} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-5xl">{clip.emoji || '🎮'}</span>
+            )}
+            <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">▶</div>
+          </div>
+          <div className="p-4 cursor-pointer" onClick={() => navigate(`/clip/${clip.id}`)}>
+            <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color || '#00f5ff' }}>{clip.game}</div>
+            <div className="text-white text-sm font-bold mb-1">{clip.title}</div>
+            <div className="text-slate-500 text-xs mb-3">🎵 {clip.music || 'No music'}</div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 text-xs">👁 {clip.views || 0}</span>
+              <span className="text-slate-500 text-xs">❤️ {clip.likes || 0}</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [clips, setClips] = useState([])
+  const [savedClips, setSavedClips] = useState([])
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
   const [followerCount, setFollowerCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [savedLoading, setSavedLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('myClips')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteClip, setDeleteClip] = useState(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [deleteSuccess, setDeleteSuccess] = useState(false)
 
   useEffect(() => {
-    if (user) { fetchProfile(); fetchMyClips(); fetchFollowers() }
+    if (user) { fetchProfile(); fetchMyClips(); fetchFollowers(); fetchSavedClips() }
   }, [user])
 
   async function fetchProfile() {
@@ -114,51 +156,49 @@ function Profile() {
   }
 
   async function fetchFollowers() {
-    const { count } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('following_id', user.id)
+    const { count } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', user.id)
     setFollowerCount(count || 0)
   }
 
   async function fetchMyClips() {
     setLoading(true)
-    const { data, error } = await supabase.from('clips').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-    if (!error) setClips(data)
+    const { data } = await supabase.from('clips').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+    if (data) setClips(data)
     setLoading(false)
+  }
+
+  async function fetchSavedClips() {
+    setSavedLoading(true)
+    const { data } = await supabase
+      .from('bookmarks')
+      .select('clip_id, clips(*)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    if (data) setSavedClips(data.map(b => b.clips).filter(Boolean))
+    setSavedLoading(false)
   }
 
   async function handleSaveProfile(newUsername, newBio) {
     const { error } = await supabase.from('profiles').update({ username: newUsername, bio: newBio }).eq('user_id', user.id)
     if (!error) {
-      setUsername(newUsername)
-      setBio(newBio)
-      setEditOpen(false)
-      setSaveSuccess(true)
+      setUsername(newUsername); setBio(newBio)
+      setEditOpen(false); setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     }
   }
 
   async function handleDeleteClip(clip) {
-    // Delete from database
     await supabase.from('clips').delete().eq('id', clip.id)
-
-    // Delete video from storage
     if (clip.video_url) {
       const path = clip.video_url.split('/clips/')[1]
       if (path) await supabase.storage.from('clips').remove([path])
     }
-
-    // Delete thumbnail from storage
     if (clip.thumbnail_url) {
       const path = clip.thumbnail_url.split('/clips/')[1]
       if (path) await supabase.storage.from('clips').remove([path])
     }
-
-    // Remove from local state
     setClips(prev => prev.filter(c => c.id !== clip.id))
-    setDeleteClip(null)
-    setDeleteSuccess(true)
+    setDeleteClip(null); setDeleteSuccess(true)
     setTimeout(() => setDeleteSuccess(false), 3000)
   }
 
@@ -180,14 +220,10 @@ function Profile() {
       {editOpen && <EditProfileModal username={username} bio={bio} onClose={() => setEditOpen(false)} onSave={handleSaveProfile} />}
       {deleteClip && <DeleteConfirmModal clip={deleteClip} onClose={() => setDeleteClip(null)} onConfirm={handleDeleteClip} />}
 
-      <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">
+      <div className="max-w-4xl mx-auto px-8 pt-32 pb-24 md:pb-16">
 
-        {saveSuccess && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3 text-green-400 text-sm mb-6 text-center">✅ Profile updated!</div>
-        )}
-        {deleteSuccess && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6 text-center">🗑️ Clip deleted!</div>
-        )}
+        {saveSuccess && <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3 text-green-400 text-sm mb-6 text-center">✅ Profile updated!</div>}
+        {deleteSuccess && <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6 text-center">🗑️ Clip deleted!</div>}
 
         {/* Profile Header */}
         <div className="bg-[#0b1425] border border-cyan-500/20 rounded-xl p-8 mb-8 relative overflow-hidden">
@@ -225,74 +261,86 @@ function Profile() {
           </div>
         </div>
 
-        <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// MY CLIPS</p>
-        <h2 className="font-black text-3xl text-white mb-6" style={{ fontFamily: 'monospace' }}>My Frags 🎮</h2>
+        {/* Tabs */}
+        <div className="flex gap-3 mb-6">
+          <button
+            onClick={() => setActiveTab('myClips')}
+            className={`px-5 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 ${activeTab === 'myClips' ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400'}`}
+            style={{ fontFamily: 'monospace' }}
+          >
+            🎮 My Clips ({clips.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('saved')}
+            className={`px-5 py-2 rounded-lg text-xs font-black tracking-widest transition-all duration-200 ${activeTab === 'saved' ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black' : 'bg-[#0b1425] border border-cyan-500/20 text-slate-400 hover:border-cyan-400'}`}
+            style={{ fontFamily: 'monospace' }}
+          >
+            🔖 Saved ({savedClips.length})
+          </button>
+        </div>
 
-        {loading && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden animate-pulse">
-                <div className="h-36 bg-cyan-500/10" />
-                <div className="p-4 space-y-2">
-                  <div className="h-3 bg-cyan-500/10 rounded w-1/3" />
-                  <div className="h-4 bg-cyan-500/10 rounded w-2/3" />
-                  <div className="h-3 bg-cyan-500/10 rounded w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!loading && clips.length === 0 && (
-          <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
-            <div className="text-5xl mb-4">🎮</div>
-            <p className="text-slate-400 text-sm tracking-widest mb-4">NO CLIPS YET</p>
-            <button onClick={() => navigate('/upload')}
-              className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-2 rounded font-black text-xs tracking-widest hover:brightness-110 transition-all"
-              style={{ fontFamily: 'monospace' }}>
-              UPLOAD YOUR FIRST CLIP
-            </button>
-          </div>
-        )}
-
-        {!loading && clips.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {clips.map(clip => (
-              <div key={clip.id} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden hover:-translate-y-1 transition-all duration-300 hover:border-cyan-400/30 group relative">
-
-                {/* Delete button */}
-                <button
-                  onClick={e => { e.stopPropagation(); setDeleteClip(clip) }}
-                  className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-red-500/80 hover:text-white text-slate-400"
-                >
-                  🗑️
-                </button>
-
-                <div
-                  onClick={() => navigate(`/clip/${clip.id}`)}
-                  className="h-36 flex items-center justify-center relative overflow-hidden cursor-pointer"
-                  style={{ background: `linear-gradient(135deg, #0b1425, ${clip.color || '#00f5ff'}22)`, borderBottom: `2px solid ${clip.color || '#00f5ff'}33` }}
-                >
-                  {clip.thumbnail_url ? (
-                    <img src={clip.thumbnail_url} alt={clip.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-5xl">{clip.emoji || '🎮'}</span>
-                  )}
-                  <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">▶</div>
-                </div>
-
-                <div className="p-4" onClick={() => navigate(`/clip/${clip.id}`)}>
-                  <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color: clip.color || '#00f5ff' }}>{clip.game}</div>
-                  <div className="text-white text-sm font-bold mb-1">{clip.title}</div>
-                  <div className="text-slate-500 text-xs mb-3">🎵 {clip.music || 'No music'}</div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-xs">👁 {clip.views || 0}</span>
-                    <span className="text-slate-500 text-xs">❤️ {clip.likes || 0}</span>
+        {/* My Clips Tab */}
+        {activeTab === 'myClips' && (
+          <>
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden animate-pulse">
+                    <div className="h-36 bg-cyan-500/10" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 bg-cyan-500/10 rounded w-1/3" />
+                      <div className="h-4 bg-cyan-500/10 rounded w-2/3" />
+                      <div className="h-3 bg-cyan-500/10 rounded w-1/2" />
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            ) : clips.length === 0 ? (
+              <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
+                <div className="text-5xl mb-4">🎮</div>
+                <p className="text-slate-400 text-sm tracking-widest mb-4">NO CLIPS YET</p>
+                <button onClick={() => navigate('/upload')}
+                  className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-2 rounded font-black text-xs tracking-widest hover:brightness-110 transition-all"
+                  style={{ fontFamily: 'monospace' }}>
+                  UPLOAD YOUR FIRST CLIP
+                </button>
+              </div>
+            ) : (
+              <ClipGrid clips={clips} navigate={navigate} onDelete={setDeleteClip} showDelete={true} />
+            )}
+          </>
+        )}
+
+        {/* Saved Clips Tab */}
+        {activeTab === 'saved' && (
+          <>
+            {savedLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden animate-pulse">
+                    <div className="h-36 bg-cyan-500/10" />
+                    <div className="p-4 space-y-2">
+                      <div className="h-3 bg-cyan-500/10 rounded w-1/3" />
+                      <div className="h-4 bg-cyan-500/10 rounded w-2/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : savedClips.length === 0 ? (
+              <div className="text-center py-20 border border-cyan-500/10 rounded-xl bg-[#0b1425]">
+                <div className="text-5xl mb-4">🔖</div>
+                <p className="text-slate-400 text-sm tracking-widest mb-2">NO SAVED CLIPS YET</p>
+                <p className="text-slate-600 text-xs mb-4">Tap 📌 on any clip in the feed to save it</p>
+                <button onClick={() => navigate('/feed')}
+                  className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-2 rounded font-black text-xs tracking-widest hover:brightness-110 transition-all"
+                  style={{ fontFamily: 'monospace' }}>
+                  GO TO FEED
+                </button>
+              </div>
+            ) : (
+              <ClipGrid clips={savedClips} navigate={navigate} showDelete={false} />
+            )}
+          </>
         )}
 
       </div>

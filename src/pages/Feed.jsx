@@ -13,10 +13,12 @@ function Feed() {
   const [likeCounts, setLikeCounts] = useState({})
   const [usernames, setUsernames] = useState({})
   const [following, setFollowing] = useState({})
+  const [bookmarks, setBookmarks] = useState({})
+  const [bookmarkAnim, setBookmarkAnim] = useState({})
 
   // Double tap state
-  const [heartAnim, setHeartAnim] = useState({}) // { clipId: true/false }
-  const lastTapRef = useRef({}) // { clipId: timestamp }
+  const [heartAnim, setHeartAnim] = useState({})
+  const lastTapRef = useRef({})
 
   const containerRef = useRef(null)
   const videoRefs = useRef({})
@@ -53,6 +55,14 @@ function Feed() {
           followData.forEach(f => { fMap[f.following_id] = true })
           setFollowing(fMap)
         }
+
+        // Fetch bookmarks
+        const { data: bookmarkData } = await supabase.from('bookmarks').select('clip_id').eq('user_id', user.id)
+        if (bookmarkData) {
+          const bMap = {}
+          bookmarkData.forEach(b => { bMap[b.clip_id] = true })
+          setBookmarks(bMap)
+        }
       }
 
       const uniqueIds = [...new Set(data.map(c => c.user_id).filter(Boolean))]
@@ -85,6 +95,17 @@ function Feed() {
     return () => el.removeEventListener('scroll', handleScroll)
   }, [handleScroll])
 
+  function handleDoubleTap(clip) {
+    const now = Date.now()
+    const last = lastTapRef.current[clip.id] || 0
+    if (now - last < 300) {
+      if (!likes[clip.id]) handleLike(clip)
+      setHeartAnim(prev => ({ ...prev, [clip.id]: true }))
+      setTimeout(() => setHeartAnim(prev => ({ ...prev, [clip.id]: false })), 1000)
+    }
+    lastTapRef.current[clip.id] = now
+  }
+
   async function handleLike(clip) {
     if (!user) { navigate('/auth'); return }
     const isLiked = likes[clip.id]
@@ -110,23 +131,20 @@ function Feed() {
     }
   }
 
-  // Double tap handler
-  function handleDoubleTap(clip) {
-    const now = Date.now()
-    const last = lastTapRef.current[clip.id] || 0
-    const DOUBLE_TAP_DELAY = 300
+  async function handleBookmark(clip) {
+    if (!user) { navigate('/auth'); return }
+    const isBookmarked = bookmarks[clip.id]
 
-    if (now - last < DOUBLE_TAP_DELAY) {
-      // Double tap detected!
-      if (!likes[clip.id]) {
-        // Only like, don't unlike on double tap (TikTok behavior)
-        handleLike(clip)
-      }
-      // Show heart animation
-      setHeartAnim(prev => ({ ...prev, [clip.id]: true }))
-      setTimeout(() => setHeartAnim(prev => ({ ...prev, [clip.id]: false })), 1000)
+    if (isBookmarked) {
+      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', clip.id)
+      setBookmarks(prev => ({ ...prev, [clip.id]: false }))
+    } else {
+      await supabase.from('bookmarks').insert({ user_id: user.id, clip_id: clip.id })
+      setBookmarks(prev => ({ ...prev, [clip.id]: true }))
+      // Animate bookmark
+      setBookmarkAnim(prev => ({ ...prev, [clip.id]: true }))
+      setTimeout(() => setBookmarkAnim(prev => ({ ...prev, [clip.id]: false })), 600)
     }
-    lastTapRef.current[clip.id] = now
   }
 
   async function handleFollow(clip) {
@@ -183,20 +201,16 @@ function Feed() {
       {/* Feed Container */}
       <div ref={containerRef} className="h-full overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {clips.map((clip, index) => (
-          <div
-            key={clip.id}
-            className="relative w-full flex items-center justify-center"
-            style={{ height: '100dvh', scrollSnapAlign: 'start', background: '#000' }}
-          >
-            {/* Video or Fallback — double tap zone */}
+          <div key={clip.id} className="relative w-full flex items-center justify-center"
+            style={{ height: '100dvh', scrollSnapAlign: 'start', background: '#000' }}>
+
+            {/* Video / Fallback — double tap zone */}
             <div className="w-full h-full" onClick={() => handleDoubleTap(clip)}>
               {clip.video_url ? (
                 <video
                   ref={el => videoRefs.current[index] = el}
                   src={clip.video_url}
-                  loop
-                  muted={false}
-                  playsInline
+                  loop muted={false} playsInline
                   className="w-full h-full object-cover"
                   onClick={e => {
                     e.stopPropagation()
@@ -252,12 +266,13 @@ function Feed() {
                   <span className="text-white/70 text-xs">{clip.music}</span>
                 </div>
               )}
-              {/* Double tap hint */}
               <p className="text-white/30 text-xs mt-2">💡 Double tap to like</p>
             </div>
 
             {/* Right Action Buttons */}
             <div className="absolute right-3 bottom-24 flex flex-col items-center gap-6">
+
+              {/* Like */}
               <button onClick={() => handleLike(clip)} className="flex flex-col items-center gap-1 group">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-200 ${likes[clip.id] ? 'scale-110' : 'group-hover:scale-110'}`}
                   style={{ background: likes[clip.id] ? 'rgba(255,107,157,0.2)' : 'rgba(255,255,255,0.1)' }}>
@@ -268,18 +283,30 @@ function Feed() {
                 </span>
               </button>
 
+              {/* Comment */}
               <button onClick={() => navigate(`/clip/${clip.id}`)} className="flex flex-col items-center gap-1 group">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.1)' }}>💬</div>
                 <span className="text-white text-xs font-bold">View</span>
               </button>
 
+              {/* Bookmark */}
+              <button onClick={() => handleBookmark(clip)} className="flex flex-col items-center gap-1 group">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-200 ${bookmarkAnim[clip.id] ? 'scale-125' : 'group-hover:scale-110'}`}
+                  style={{ background: bookmarks[clip.id] ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.1)' }}>
+                  {bookmarks[clip.id] ? '🔖' : '📌'}
+                </div>
+                <span className="text-white text-xs font-bold">Save</span>
+              </button>
+
+              {/* Share */}
               <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/clip/${clip.id}`)} className="flex flex-col items-center gap-1 group">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200"
                   style={{ background: 'rgba(255,255,255,0.1)' }}>🔗</div>
                 <span className="text-white text-xs font-bold">Share</span>
               </button>
 
+              {/* Views */}
               <div className="flex flex-col items-center gap-1">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
                   style={{ background: 'rgba(255,255,255,0.1)' }}>👁</div>

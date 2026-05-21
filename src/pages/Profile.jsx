@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
@@ -136,9 +136,56 @@ function Profile() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [deleteSuccess, setDeleteSuccess] = useState(false)
 
+  const followerChannelRef = useRef(null)
+
   useEffect(() => {
-    if (user) { fetchProfile(); fetchMyClips(); fetchFollowers(); fetchSavedClips() }
+    if (user) {
+      fetchProfile()
+      fetchMyClips()
+      fetchFollowers()
+      fetchSavedClips()
+      subscribeToFollowers()
+    }
+    return () => {
+      if (followerChannelRef.current) {
+        supabase.removeChannel(followerChannelRef.current)
+        followerChannelRef.current = null
+      }
+    }
   }, [user])
+
+  function subscribeToFollowers() {
+    if (!user) return
+    if (followerChannelRef.current) {
+      supabase.removeChannel(followerChannelRef.current)
+    }
+
+    const channel = supabase
+      .channel(`profile-followers:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${user.id}`,
+        },
+        () => setFollowerCount(prev => prev + 1)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${user.id}`,
+        },
+        () => setFollowerCount(prev => Math.max(0, prev - 1))
+      )
+      .subscribe()
+
+    followerChannelRef.current = channel
+  }
 
   async function fetchProfile() {
     const { data } = await supabase.from('profiles').select('username, bio, verified').eq('user_id', user.id).single()
@@ -219,12 +266,9 @@ function Profile() {
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-4xl flex-shrink-0">🎮</div>
             <div className="flex-1 text-center md:text-left">
-              {/* Username with verified badge */}
               <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
                 <h1 className="font-black text-2xl text-white tracking-widest" style={{ fontFamily: 'monospace' }}>@{displayName}</h1>
-                {verified && (
-                  <span title="Verified Creator" className="text-xl">✅</span>
-                )}
+                {verified && <span title="Verified Creator" className="text-xl">✅</span>}
               </div>
               <p className="text-cyan-400 text-sm mb-1 tracking-widest">
                 FragBeats Creator {verified && <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded ml-1">VERIFIED</span>}
@@ -245,11 +289,19 @@ function Profile() {
             </div>
           </div>
 
+          {/* Stats — Followers is now real-time */}
           <div className="relative z-10 grid grid-cols-4 gap-4 mt-8 pt-8 border-t border-cyan-500/10">
             {STATS.map(stat => (
               <div key={stat.label} className="text-center">
-                <div className="font-black text-2xl bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent" style={{ fontFamily: 'monospace' }}>{stat.value}</div>
-                <div className="text-slate-500 text-xs tracking-widest uppercase mt-1">{stat.label}</div>
+                <div className="font-black text-2xl bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent" style={{ fontFamily: 'monospace' }}>
+                  {stat.value}
+                </div>
+                <div className="text-slate-500 text-xs tracking-widest uppercase mt-1 flex items-center justify-center gap-1">
+                  {stat.label}
+                  {stat.label === 'Followers' && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" title="Live" />
+                  )}
+                </div>
               </div>
             ))}
           </div>

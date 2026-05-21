@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -37,14 +37,59 @@ function ClipDetail() {
   const [shareOpen, setShareOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
 
+  const followerChannelRef = useRef(null)
+
   useEffect(() => {
     if (id) { fetchClip(); fetchComments() }
   }, [id])
 
   useEffect(() => {
     if (clip && user) { checkIfLiked(); checkIfFollowing(); checkIfBookmarked() }
-    if (clip?.user_id) { fetchCreatorProfile(clip.user_id); fetchFollowerCount(clip.user_id) }
+    if (clip?.user_id) {
+      fetchCreatorProfile(clip.user_id)
+      fetchFollowerCount(clip.user_id)
+      subscribeToFollowers(clip.user_id)
+    }
+    return () => {
+      if (followerChannelRef.current) {
+        supabase.removeChannel(followerChannelRef.current)
+        followerChannelRef.current = null
+      }
+    }
   }, [clip, user])
+
+  function subscribeToFollowers(creatorId) {
+    // Clean up any existing channel first
+    if (followerChannelRef.current) {
+      supabase.removeChannel(followerChannelRef.current)
+    }
+
+    const channel = supabase
+      .channel(`followers:${creatorId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${creatorId}`,
+        },
+        () => setFollowerCount(prev => prev + 1)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'follows',
+          filter: `following_id=eq.${creatorId}`,
+        },
+        () => setFollowerCount(prev => Math.max(0, prev - 1))
+      )
+      .subscribe()
+
+    followerChannelRef.current = channel
+  }
 
   async function fetchClip() {
     setLoading(true)
@@ -142,10 +187,10 @@ function ClipDetail() {
     setFollowLoading(true)
     if (following) {
       await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
-      setFollowing(false); setFollowerCount(prev => prev - 1)
+      setFollowing(false)
     } else {
       await supabase.from('follows').insert({ follower_id: user.id, following_id: clip.user_id })
-      setFollowing(true); setFollowerCount(prev => prev + 1)
+      setFollowing(true)
       await sendNotification(clip.user_id, 'follow', 'started following you')
     }
     setFollowLoading(false)
@@ -303,7 +348,7 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* Creator Info */}
+              {/* Creator Info — followerCount now real-time */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">🎮</div>
@@ -312,7 +357,10 @@ function ClipDetail() {
                       <div className="text-cyan-400 font-bold text-sm">@{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}</div>
                       {clipCreatorVerified && <span title="Verified Creator" className="text-sm">✅</span>}
                     </div>
-                    <div className="text-slate-500 text-xs">{followerCount} followers</div>
+                    <div className="flex items-center gap-1 text-slate-500 text-xs">
+                      <span>{followerCount} followers</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" title="Live" />
+                    </div>
                   </div>
                 </div>
                 {!isOwnClip ? (

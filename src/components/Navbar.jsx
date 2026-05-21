@@ -15,6 +15,7 @@ const BOTTOM_NAV = [
 const TOP_NAV = [
   { label: 'Explore', path: '/explore' },
   { label: '▶ Feed', path: '/feed' },
+  { label: '🗂️ Collections', path: '/collections' },
   { label: 'Music', path: '/music' },
   { label: '🏆', path: '/leaderboard' },
   { label: 'Profile', path: '/profile' },
@@ -77,6 +78,7 @@ function Navbar() {
                 className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 ${
                   location.pathname === link.path ? 'text-cyan-400'
                   : link.path === '/feed' ? 'text-purple-400 hover:text-purple-300'
+                  : link.path === '/collections' ? 'text-cyan-300 hover:text-cyan-400'
                   : 'text-slate-400 hover:text-cyan-400'
                 }`}>
                 {link.label}
@@ -125,7 +127,12 @@ function Navbar() {
           )}
           {TOP_NAV.map(link => (
             <span key={link.label} onClick={() => handleNavClick(link.path)}
-              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${link.path === '/feed' ? 'text-purple-400' : 'text-slate-400 hover:text-cyan-400'}`}>
+              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${
+                location.pathname === link.path ? 'text-cyan-400 font-bold'
+                : link.path === '/feed' ? 'text-purple-400'
+                : link.path === '/collections' ? 'text-cyan-300 hover:text-cyan-400'
+                : 'text-slate-400 hover:text-cyan-400'
+              }`}>
               {link.label}
             </span>
           ))}

@@ -1,3 +1,4 @@
+import Collections from './pages/Collections'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -52,6 +53,7 @@ function AnimatedRoutes() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/search" element={<Search />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/collections" element={<Collections />} />
         <Route path="/clip/:id" element={<ClipDetail />} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

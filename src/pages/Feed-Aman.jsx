@@ -12,7 +12,6 @@ function Feed() {
   const [likes, setLikes] = useState({})
   const [likeCounts, setLikeCounts] = useState({})
   const [usernames, setUsernames] = useState({})
-  const [verifiedUsers, setVerifiedUsers] = useState({})
   const [following, setFollowing] = useState({})
   const [bookmarks, setBookmarks] = useState({})
   const [bookmarkAnim, setBookmarkAnim] = useState({})
@@ -65,19 +64,11 @@ function Feed() {
 
       const uniqueIds = [...new Set(data.map(c => c.user_id).filter(Boolean))]
       if (uniqueIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, username, verified')
-          .in('user_id', uniqueIds)
+        const { data: profiles } = await supabase.from('profiles').select('user_id, username').in('user_id', uniqueIds)
         if (profiles) {
-          const usernameMap = {}
-          const verifiedMap = {}
-          profiles.forEach(p => {
-            usernameMap[p.user_id] = p.username
-            verifiedMap[p.user_id] = p.verified || false
-          })
-          setUsernames(usernameMap)
-          setVerifiedUsers(verifiedMap)
+          const map = {}
+          profiles.forEach(p => { map[p.user_id] = p.username })
+          setUsernames(map)
         }
       }
     }
@@ -214,7 +205,7 @@ function Feed() {
           <div key={clip.id} className="relative w-full flex items-center justify-center"
             style={{ height: '100dvh', scrollSnapAlign: 'start', background: '#000' }}>
 
-            {/* Video / Fallback */}
+            {/* Video / Fallback — double tap zone */}
             <div className="w-full h-full" onClick={() => handleDoubleTap(clip)}>
               {clip.video_url ? (
                 <video
@@ -256,20 +247,10 @@ function Feed() {
               </div>
               <h2 className="text-white font-black text-xl mb-1 leading-tight" style={{ fontFamily: 'monospace' }}>{clip.title}</h2>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black">
                   {getUsername(clip.user_id)[0]?.toUpperCase() || 'G'}
                 </div>
-                {/* ✅ Username + Verified Badge */}
-                <div className="flex items-center gap-1">
-                  <span className="text-white text-sm font-bold">@{getUsername(clip.user_id)}</span>
-                  {verifiedUsers[clip.user_id] && (
-                    <span
-                      title="Verified Creator"
-                      className="text-sm leading-none"
-                      style={{ filter: 'drop-shadow(0 0 4px #00f5ff)' }}
-                    >✅</span>
-                  )}
-                </div>
+                <span className="text-white text-sm font-bold">@{getUsername(clip.user_id)}</span>
                 {user?.id !== clip.user_id && (
                   <button
                     onClick={() => handleFollow(clip)}

@@ -13,6 +13,7 @@ function ClipDetail() {
 
   const [clip, setClip] = useState(null)
   const [clipCreator, setClipCreator] = useState('')
+  const [clipCreatorVerified, setClipCreatorVerified] = useState(false)
   const [relatedClips, setRelatedClips] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -25,11 +26,13 @@ function ClipDetail() {
   const [newComment, setNewComment] = useState('')
   const [posting, setPosting] = useState(false)
   const [usernames, setUsernames] = useState({})
+  const [verifiedMap, setVerifiedMap] = useState({})
 
   const [following, setFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [followerCount, setFollowerCount] = useState(0)
 
+  const [bookmarked, setBookmarked] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
@@ -37,8 +40,8 @@ function ClipDetail() {
   }, [id])
 
   useEffect(() => {
-    if (clip && user) { checkIfLiked(); checkIfFollowing() }
-    if (clip?.user_id) { fetchCreatorUsername(clip.user_id); fetchFollowerCount(clip.user_id) }
+    if (clip && user) { checkIfLiked(); checkIfFollowing(); checkIfBookmarked() }
+    if (clip?.user_id) { fetchCreatorProfile(clip.user_id); fetchFollowerCount(clip.user_id) }
   }, [clip, user])
 
   async function fetchClip() {
@@ -48,16 +51,15 @@ function ClipDetail() {
       setClip(data)
       setLikeCount(data.likes || 0)
       fetchRelatedClips(data.game, data.id)
-
-      // ✅ Increment view count
       await supabase.from('clips').update({ views: (data.views || 0) + 1 }).eq('id', id)
     }
     setLoading(false)
   }
 
-  async function fetchCreatorUsername(userId) {
-    const { data } = await supabase.from('profiles').select('username').eq('user_id', userId).single()
+  async function fetchCreatorProfile(userId) {
+    const { data } = await supabase.from('profiles').select('username, verified').eq('user_id', userId).single()
     if (data?.username) setClipCreator(data.username)
+    if (data?.verified) setClipCreatorVerified(true)
   }
 
   async function fetchFollowerCount(userId) {
@@ -82,6 +84,12 @@ function ClipDetail() {
     if (data) setFollowing(true)
   }
 
+  async function checkIfBookmarked() {
+    if (!user) return
+    const { data } = await supabase.from('bookmarks').select('id').eq('user_id', user.id).eq('clip_id', id).single()
+    if (data) setBookmarked(true)
+  }
+
   async function fetchComments() {
     setCommentsLoading(true)
     const { data } = await supabase.from('comments').select('*').eq('clip_id', id).order('created_at', { ascending: false })
@@ -89,11 +97,11 @@ function ClipDetail() {
       setComments(data)
       const uniqueIds = [...new Set(data.map(c => c.user_id))]
       if (uniqueIds.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('user_id, username').in('user_id', uniqueIds)
+        const { data: profiles } = await supabase.from('profiles').select('user_id, username, verified').in('user_id', uniqueIds)
         if (profiles) {
-          const map = {}
-          profiles.forEach(p => { map[p.user_id] = p.username })
-          setUsernames(map)
+          const map = {}; const vMap = {}
+          profiles.forEach(p => { map[p.user_id] = p.username; vMap[p.user_id] = p.verified })
+          setUsernames(map); setVerifiedMap(vMap)
         }
       }
     }
@@ -141,18 +149,31 @@ function ClipDetail() {
     setFollowLoading(false)
   }
 
+  async function handleBookmark() {
+    if (!user) { navigate('/auth'); return }
+    if (bookmarked) {
+      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', id)
+      setBookmarked(false)
+    } else {
+      await supabase.from('bookmarks').insert({ user_id: user.id, clip_id: parseInt(id) })
+      setBookmarked(true)
+    }
+  }
+
   async function handleComment() {
     if (!newComment.trim()) return
     if (!user) { navigate('/auth'); return }
     setPosting(true)
-    const { data, error } = await supabase
-      .from('comments')
+    const { data, error } = await supabase.from('comments')
       .insert({ user_id: user.id, clip_id: parseInt(id), text: newComment.trim() })
       .select().single()
     if (!error && data) {
       if (!usernames[user.id]) {
-        const { data: profile } = await supabase.from('profiles').select('username').eq('user_id', user.id).single()
-        if (profile?.username) setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
+        const { data: profile } = await supabase.from('profiles').select('username, verified').eq('user_id', user.id).single()
+        if (profile?.username) {
+          setUsernames(prev => ({ ...prev, [user.id]: profile.username }))
+          setVerifiedMap(prev => ({ ...prev, [user.id]: profile.verified }))
+        }
       }
       setComments(prev => [data, ...prev])
       setNewComment('')
@@ -161,9 +182,8 @@ function ClipDetail() {
     setPosting(false)
   }
 
-  function getUsername(userId) {
-    return usernames[userId] || userId?.slice(0, 8) || 'user'
-  }
+  function getUsername(userId) { return usernames[userId] || userId?.slice(0, 8) || 'user' }
+  function isVerified(userId) { return verifiedMap[userId] || false }
 
   function formatTime(timestamp) {
     const diff = Math.floor((Date.now() - new Date(timestamp)) / 1000)
@@ -235,17 +255,21 @@ function ClipDetail() {
                 <div>
                   <h1 className="font-black text-2xl text-white mb-1" style={{ fontFamily: 'monospace' }}>{clip.title} {clip.emoji}</h1>
                   <div className="flex items-center gap-3 text-slate-500 text-sm">
-                    <span>👁 {(clip.views || 0) + 1} views</span>
+                    <span>👁 {clip.views || 0} views</span>
                     <span>•</span>
                     <span className="text-cyan-400 font-bold">{clip.game}</span>
                     <span>•</span>
                     <span>{new Date(clip.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <div className="flex gap-3 flex-shrink-0">
+                <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                   <button onClick={handleLike} disabled={likeLoading}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${liked ? 'border-pink-400 text-pink-400 bg-pink-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-pink-400 hover:text-pink-400'}`}>
                     {liked ? '❤️' : '🤍'} {likeCount}
+                  </button>
+                  <button onClick={handleBookmark}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${bookmarked ? 'border-yellow-400 text-yellow-400 bg-yellow-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-yellow-400 hover:text-yellow-400'}`}>
+                    {bookmarked ? '🔖' : '📌'}
                   </button>
                   <button onClick={() => setShareOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200">
@@ -254,12 +278,15 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* Creator */}
+              {/* Creator Info */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">🎮</div>
                   <div>
-                    <div className="text-cyan-400 font-bold text-sm">@{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}</div>
+                    <div className="flex items-center gap-1">
+                      <div className="text-cyan-400 font-bold text-sm">@{clipCreator || clip.user_id?.slice(0, 8) || 'creator'}</div>
+                      {clipCreatorVerified && <span title="Verified Creator" className="text-sm">✅</span>}
+                    </div>
                     <div className="text-slate-500 text-xs">{followerCount} followers</div>
                   </div>
                 </div>
@@ -278,6 +305,7 @@ function ClipDetail() {
             {/* Comments */}
             <div>
               <h3 className="font-black text-lg text-white mb-4 tracking-widest" style={{ fontFamily: 'monospace' }}>COMMENTS ({comments.length})</h3>
+
               <div className="flex gap-3 mb-6">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm flex-shrink-0">🎮</div>
                 <div className="flex-1 flex gap-2">
@@ -300,7 +328,8 @@ function ClipDetail() {
                     <div key={i} className="flex gap-3 animate-pulse">
                       <div className="w-9 h-9 rounded-full bg-cyan-500/10 flex-shrink-0" />
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
-                        <div className="h-3 bg-cyan-500/10 rounded w-1/4 mb-2" /><div className="h-3 bg-cyan-500/10 rounded w-3/4" />
+                        <div className="h-3 bg-cyan-500/10 rounded w-1/4 mb-2" />
+                        <div className="h-3 bg-cyan-500/10 rounded w-3/4" />
                       </div>
                     </div>
                   ))}
@@ -323,6 +352,7 @@ function ClipDetail() {
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-cyan-400 text-xs font-bold">@{getUsername(comment.user_id)}</span>
+                          {isVerified(comment.user_id) && <span className="text-xs">✅</span>}
                           <span className="text-slate-600 text-xs">{formatTime(comment.created_at)}</span>
                         </div>
                         <p className="text-slate-300 text-sm">{comment.text}</p>
@@ -342,9 +372,13 @@ function ClipDetail() {
               {relatedClips.map(related => (
                 <div key={related.id} onClick={() => navigate(`/clip/${related.id}`)}
                   className="bg-[#0b1425] border border-cyan-500/10 rounded-lg overflow-hidden cursor-pointer hover:border-cyan-400/30 transition-all duration-300 group">
-                  <div className="h-24 flex items-center justify-center text-4xl relative"
+                  <div className="h-24 flex items-center justify-center relative overflow-hidden"
                     style={{ background: `linear-gradient(135deg, #0b1425, ${related.color || '#00f5ff'}22)` }}>
-                    {related.emoji || '🎮'}
+                    {related.thumbnail_url ? (
+                      <img src={related.thumbnail_url} alt={related.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-4xl">{related.emoji || '🎮'}</span>
+                    )}
                     <div className="absolute w-10 h-10 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm group-hover:border-cyan-400/60 transition-all duration-300">▶</div>
                   </div>
                   <div className="p-3">

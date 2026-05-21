@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate, useParams } from 'react-router-dom'
 import ShareModal from '../components/ShareModal'
+import ReportModal from '../components/ReportModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -34,6 +35,7 @@ function ClipDetail() {
 
   const [bookmarked, setBookmarked] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
 
   useEffect(() => {
     if (id) { fetchClip(); fetchComments() }
@@ -182,7 +184,6 @@ function ClipDetail() {
     setPosting(false)
   }
 
-  // ✅ WhatsApp share handler
   function handleWhatsAppShare() {
     const url = `${window.location.origin}/clip/${clip.id}`
     const text = `Check out this frag on FragBeats! 🎮🔥\n"${clip.title}" - ${clip.game}\n${url}`
@@ -280,8 +281,6 @@ function ClipDetail() {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 ${bookmarked ? 'border-yellow-400 text-yellow-400 bg-yellow-400/10' : 'border-cyan-500/20 text-slate-400 hover:border-yellow-400 hover:text-yellow-400'}`}>
                     {bookmarked ? '🔖' : '📌'}
                   </button>
-
-                  {/* ✅ WhatsApp Share Button */}
                   <button onClick={handleWhatsAppShare}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 hover:brightness-110"
                     style={{ borderColor: 'rgba(37,211,102,0.4)', color: '#25D366', background: 'rgba(37,211,102,0.08)' }}>
@@ -290,11 +289,17 @@ function ClipDetail() {
                     </svg>
                     Share
                   </button>
-
                   <button onClick={() => setShareOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border border-cyan-500/20 text-slate-400 text-sm hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200">
                     🔗 Link
                   </button>
+                  {user && !isOwnClip && (
+                    <button onClick={() => setReportOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 hover:brightness-110"
+                      style={{ borderColor: 'rgba(255,45,85,0.3)', color: '#ff2d55', background: 'rgba(255,45,85,0.08)' }}>
+                      🚩 Report
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -415,7 +420,9 @@ function ClipDetail() {
 
         </div>
       </div>
+
       {shareOpen && <ShareModal clip={clip} onClose={() => setShareOpen(false)} />}
+      {reportOpen && <ReportModal clip={clip} onClose={() => setReportOpen(false)} />}
       <Footer />
     </div>
   )

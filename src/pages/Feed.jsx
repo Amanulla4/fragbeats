@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import ReportModal from '../components/ReportModal'
 
 function Feed() {
   const navigate = useNavigate()
@@ -18,6 +19,7 @@ function Feed() {
   const [bookmarkAnim, setBookmarkAnim] = useState({})
   const [heartAnim, setHeartAnim] = useState({})
   const [shareCopied, setShareCopied] = useState({})
+  const [reportClip, setReportClip] = useState(null)
   const lastTapRef = useRef({})
   const containerRef = useRef(null)
   const videoRefs = useRef({})
@@ -259,15 +261,11 @@ function Feed() {
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black flex-shrink-0">
                   {getUsername(clip.user_id)[0]?.toUpperCase() || 'G'}
                 </div>
-                {/* ✅ Username + Verified Badge */}
                 <div className="flex items-center gap-1">
                   <span className="text-white text-sm font-bold">@{getUsername(clip.user_id)}</span>
                   {verifiedUsers[clip.user_id] && (
-                    <span
-                      title="Verified Creator"
-                      className="text-sm leading-none"
-                      style={{ filter: 'drop-shadow(0 0 4px #00f5ff)' }}
-                    >✅</span>
+                    <span title="Verified Creator" className="text-sm leading-none"
+                      style={{ filter: 'drop-shadow(0 0 4px #00f5ff)' }}>✅</span>
                   )}
                 </div>
                 {user?.id !== clip.user_id && (
@@ -338,6 +336,16 @@ function Feed() {
                   {clip.views > 999 ? (clip.views / 1000).toFixed(1) + 'K' : clip.views || 0}
                 </span>
               </div>
+
+              {/* Report */}
+              {user && user.id !== clip.user_id && (
+                <button onClick={() => setReportClip(clip)} className="flex flex-col items-center gap-1 group">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-xl group-hover:scale-110 transition-all duration-200"
+                    style={{ background: 'rgba(255,45,85,0.1)' }}>🚩</div>
+                  <span className="text-white text-xs font-bold">Report</span>
+                </button>
+              )}
+
             </div>
 
             {index === 0 && currentIndex === 0 && (
@@ -364,6 +372,9 @@ function Feed() {
           </div>
         )}
       </div>
+
+      {/* Report Modal */}
+      {reportClip && <ReportModal clip={reportClip} onClose={() => setReportClip(null)} />}
     </div>
   )
 }

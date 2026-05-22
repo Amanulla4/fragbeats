@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { useNotifications } from '../hooks/useNotifications'
 
 const BOTTOM_NAV = [
   { icon: '🏠', label: 'Home', path: '/explore' },
@@ -34,6 +35,7 @@ function Navbar() {
   const location = useLocation()
   const { isDark, toggleTheme } = useTheme()
   const { user, signOut } = useAuth()
+  const { unreadCount, clearUnread } = useNotifications()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40)
@@ -56,7 +58,11 @@ function Navbar() {
     if (data?.verified) setVerified(true)
   }
 
-  const handleNavClick = (path) => { navigate(path); setMenuOpen(false) }
+  const handleNavClick = (path) => {
+    if (path === '/notifications') clearUnread()
+    navigate(path)
+    setMenuOpen(false)
+  }
   const handleSignOut = async () => { await signOut(); navigate('/') }
 
   if (location.pathname === '/feed') return null
@@ -73,7 +79,7 @@ function Navbar() {
 
         <ul className="hidden md:flex gap-8 list-none">
           {TOP_NAV.map(link => (
-            <li key={link.label}>
+            <li key={link.label} className="relative">
               <span onClick={() => handleNavClick(link.path)}
                 className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 ${
                   location.pathname === link.path ? 'text-cyan-400'
@@ -83,6 +89,12 @@ function Navbar() {
                 }`}>
                 {link.label}
               </span>
+              {/* Unread badge on bell icon in desktop nav */}
+              {link.path === '/notifications' && unreadCount > 0 && (
+                <span className="absolute -top-2 -right-3 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -126,15 +138,22 @@ function Navbar() {
             </div>
           )}
           {TOP_NAV.map(link => (
-            <span key={link.label} onClick={() => handleNavClick(link.path)}
-              className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 ${
-                location.pathname === link.path ? 'text-cyan-400 font-bold'
-                : link.path === '/feed' ? 'text-purple-400'
-                : link.path === '/collections' ? 'text-cyan-300 hover:text-cyan-400'
-                : 'text-slate-400 hover:text-cyan-400'
-              }`}>
-              {link.label}
-            </span>
+            <div key={link.label} className="relative w-fit">
+              <span onClick={() => handleNavClick(link.path)}
+                className={`text-sm tracking-widest uppercase cursor-pointer transition-colors duration-200 py-2 border-b border-cyan-500/10 block ${
+                  location.pathname === link.path ? 'text-cyan-400 font-bold'
+                  : link.path === '/feed' ? 'text-purple-400'
+                  : link.path === '/collections' ? 'text-cyan-300 hover:text-cyan-400'
+                  : 'text-slate-400 hover:text-cyan-400'
+                }`}>
+                {link.label}
+              </span>
+              {link.path === '/notifications' && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </div>
           ))}
           {user ? (
             <button onClick={handleSignOut} className="border border-red-500/30 text-red-400 px-5 py-3 rounded text-sm tracking-widest hover:border-red-400 transition-all duration-200 bg-transparent text-left">Logout</button>
@@ -154,14 +173,23 @@ function Navbar() {
           {BOTTOM_NAV.map(item => {
             const isActive = location.pathname === item.path
             const isUpload = item.path === '/upload'
+            const isNotif = item.path === '/notifications'
             return (
               <button key={item.path} onClick={() => handleNavClick(item.path)}
-                className="flex flex-col items-center gap-1 flex-1 py-1 transition-all duration-200">
+                className="flex flex-col items-center gap-1 flex-1 py-1 transition-all duration-200 relative">
                 {isUpload ? (
                   <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-400 to-purple-500 flex items-center justify-center text-xl text-black shadow-lg shadow-cyan-500/30 -translate-y-2">➕</div>
                 ) : (
                   <>
-                    <span className={`text-2xl transition-all duration-200 ${isActive ? 'scale-110' : 'opacity-60'}`}>{item.icon}</span>
+                    <div className="relative">
+                      <span className={`text-2xl transition-all duration-200 ${isActive ? 'scale-110' : 'opacity-60'}`}>{item.icon}</span>
+                      {/* Red badge on mobile bell */}
+                      {isNotif && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-2 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center px-1 leading-none">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-xs tracking-widest transition-all duration-200 ${isActive ? 'text-cyan-400 font-bold' : 'text-slate-600'}`}
                       style={{ fontFamily: 'monospace', fontSize: '9px' }}>{item.label}</span>
                     {isActive && <div className="w-1 h-1 rounded-full bg-cyan-400" />}

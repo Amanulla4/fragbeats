@@ -3,8 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { useNotifications } from '../hooks/useNotifications'
-
+import { useNotifications } from '../context/NotificationContext'
 const BOTTOM_NAV = [
   { icon: '🏠', label: 'Home', path: '/explore' },
   { icon: '▶', label: 'Feed', path: '/feed' },

@@ -4,8 +4,7 @@ import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { useNotifications } from '../hooks/useNotifications'
-
+import { useNotifications } from '../context/NotificationContext'
 const TYPE_ICON = { like: '❤️', comment: '💬', follow: '👤' }
 const TYPE_COLOR = { like: '#ff6b9d', comment: '#00f5ff', follow: '#bf00ff' }
 

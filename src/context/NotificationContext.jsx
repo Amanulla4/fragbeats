@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from './AuthContext'
 
-export function useNotifications() {
+const NotificationContext = createContext({ unreadCount: 0, clearUnread: () => {} })
+
+export function NotificationProvider({ children }) {
   const { user } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
   const channelRef = useRef(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) { setUnreadCount(0); return }
     fetchUnreadCount()
     subscribeToNotifications()
     return () => {
@@ -29,36 +31,25 @@ export function useNotifications() {
   }
 
   function subscribeToNotifications() {
-    if (channelRef.current) supabase.removeChannel(channelRef.current)
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+      channelRef.current = null
+    }
 
     const channel = supabase
-      .channel(`notifications:${user.id}`)
+      .channel(`notif-ctx:${user.id}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const n = payload.new
           setUnreadCount(prev => prev + 1)
-          showBrowserNotification(n)
+          showBrowserNotification(payload.new)
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          // Recount after mark-as-read
-          fetchUnreadCount()
-        }
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+        () => fetchUnreadCount()
       )
       .subscribe()
 
@@ -67,18 +58,11 @@ export function useNotifications() {
 
   async function showBrowserNotification(notification) {
     if (!('Notification' in window)) return
-
-    // Request permission if not decided yet
-    if (Notification.permission === 'default') {
-      await Notification.requestPermission()
-    }
-
+    if (Notification.permission === 'default') await Notification.requestPermission()
     if (Notification.permission !== 'granted') return
 
     const TYPE_ICON = { like: '❤️', comment: '💬', follow: '👤' }
-    const icon = '/favicon.ico'
 
-    // Fetch sender username
     let senderName = 'Someone'
     if (notification.from_user_id) {
       const { data } = await supabase
@@ -89,33 +73,31 @@ export function useNotifications() {
       if (data?.username) senderName = `@${data.username}`
     }
 
-    const title = `FragBeats ${TYPE_ICON[notification.type] || '🔔'}`
-    const body = `${senderName} ${notification.message}`
-
-    const notif = new Notification(title, {
-      body,
-      icon,
-      badge: icon,
+    const notif = new Notification(`FragBeats ${TYPE_ICON[notification.type] || '🔔'}`, {
+      body: `${senderName} ${notification.message}`,
+      icon: '/favicon.ico',
       tag: `fragbeats-${notification.id}`,
       renotify: true,
     })
 
-    // Click opens the clip
     notif.onclick = () => {
       window.focus()
-      if (notification.clip_id) {
-        window.location.href = `/clip/${notification.clip_id}`
-      }
+      if (notification.clip_id) window.location.href = `/clip/${notification.clip_id}`
       notif.close()
     }
 
-    // Auto-close after 5 seconds
     setTimeout(() => notif.close(), 5000)
   }
 
-  function clearUnread() {
-    setUnreadCount(0)
-  }
+  function clearUnread() { setUnreadCount(0) }
 
-  return { unreadCount, clearUnread }
+  return (
+    <NotificationContext.Provider value={{ unreadCount, clearUnread }}>
+      {children}
+    </NotificationContext.Provider>
+  )
+}
+
+export function useNotifications() {
+  return useContext(NotificationContext)
 }

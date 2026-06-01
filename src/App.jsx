@@ -1,7 +1,6 @@
-import Collections from './pages/Collections'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Explore from './pages/Explore'
@@ -21,6 +20,8 @@ import Waitlist from './pages/Waitlist'
 import Terms from './pages/Terms'
 import Blog from './pages/Blog'
 import Feed from './pages/Feed'
+import Collections from './pages/Collections'
+
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import MusicPlayer from './components/MusicPlayer'
@@ -32,31 +33,75 @@ function AnimatedRoutes() {
   const isFeed = location.pathname === '/feed'
 
   useEffect(() => {
-    if (isFeed) return // No loader on feed
+    if (isFeed) return
+
     setLoading(true)
     const timer = setTimeout(() => setLoading(false), 600)
+
     return () => clearTimeout(timer)
-  }, [location.pathname])
+  }, [location.pathname, isFeed])
 
   return (
     <>
       {loading && <PageLoader />}
       {!isFeed && <MusicPlayer />}
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/feed" element={<Feed />} />
-        <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-        <Route path="/profile" element={<Profile />} />
         <Route path="/music" element={<Music />} />
-        <Route path="/notifications" element={<Notifications />} />
         <Route path="/search" element={<Search />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/collections" element={<Collections />} />
         <Route path="/clip/:id" element={<ClipDetail />} />
-        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+        <Route
+          path="/upload"
+          element={
+            <ProtectedRoute>
+              <Upload />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="/about" element={<About />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/waitlist" element={<Waitlist />} />

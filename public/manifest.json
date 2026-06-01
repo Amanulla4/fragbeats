@@ -1,12 +1,20 @@
 {
+  "id": "/",
   "name": "FragBeats",
   "short_name": "FragBeats",
-  "description": "Game. Edit. Vibe. The home for gaming clips and lo-fi music.",
+  "description": "Upload, discover, and share short gaming clips with a creator-first gaming community.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "background_color": "#040810",
-  "theme_color": "#00f5ff",
+  "theme_color": "#040810",
   "orientation": "portrait",
+  "categories": ["games", "entertainment", "social", "video"],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "icons": [
     {
       "src": "/favicon.svg",
@@ -15,23 +23,45 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["entertainment", "games", "music"],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "Explore Clips",
+      "short_name": "Explore",
+      "description": "Browse gaming clips",
       "url": "/explore",
-      "description": "Browse gaming clips"
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     },
     {
       "name": "Upload Clip",
+      "short_name": "Upload",
+      "description": "Upload your gaming clip",
       "url": "/upload",
-      "description": "Upload your gaming clip"
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     },
     {
-      "name": "Music Library",
-      "url": "/music",
-      "description": "Browse lo-fi tracks"
+      "name": "Open Feed",
+      "short_name": "Feed",
+      "description": "Watch short gaming clips",
+      "url": "/feed",
+      "icons": [
+        {
+          "src": "/favicon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }

@@ -10,6 +10,7 @@ function Feed() {
   const [clips, setClips] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [soundOn, setSoundOn] = useState(false)
   const [likes, setLikes] = useState({})
   const [likeCounts, setLikeCounts] = useState({})
   const [usernames, setUsernames] = useState({})
@@ -32,6 +33,8 @@ function Feed() {
     Object.entries(videoRefs.current).forEach(([index, video]) => {
       if (!video) return
 
+      video.muted = !soundOn
+
       if (Number(index) === currentIndex) {
         video.play().catch(() => {})
       } else {
@@ -39,7 +42,7 @@ function Feed() {
         video.currentTime = 0
       }
     })
-  }, [currentIndex])
+  }, [currentIndex, soundOn])
 
   async function fetchClips() {
     setLoading(true)
@@ -75,12 +78,7 @@ function Feed() {
         .select('clip_id')
         .eq('user_id', user.id)
 
-      if (likedData) {
-        likedData.forEach((like) => {
-          likedMap[like.clip_id] = true
-        })
-      }
-
+      if (likedData) likedData.forEach((like) => { likedMap[like.clip_id] = true })
       setLikes(likedMap)
 
       const { data: followData } = await supabase
@@ -90,9 +88,7 @@ function Feed() {
 
       if (followData) {
         const followMap = {}
-        followData.forEach((follow) => {
-          followMap[follow.following_id] = true
-        })
+        followData.forEach((follow) => { followMap[follow.following_id] = true })
         setFollowing(followMap)
       }
 
@@ -103,9 +99,7 @@ function Feed() {
 
       if (bookmarkData) {
         const bookmarkMap = {}
-        bookmarkData.forEach((bookmark) => {
-          bookmarkMap[bookmark.clip_id] = true
-        })
+        bookmarkData.forEach((bookmark) => { bookmarkMap[bookmark.clip_id] = true })
         setBookmarks(bookmarkMap)
       }
     } else {
@@ -143,32 +137,24 @@ function Feed() {
     if (!clip || viewedClipIdsRef.current.has(clip.id)) return
 
     viewedClipIdsRef.current.add(clip.id)
-
     const nextViews = (clip.views || 0) + 1
 
     setClips((prev) =>
       prev.map((item) => (item.id === clip.id ? { ...item, views: nextViews } : item))
     )
 
-    await supabase
-      .from('clips')
-      .update({ views: nextViews })
-      .eq('id', clip.id)
+    await supabase.from('clips').update({ views: nextViews }).eq('id', clip.id)
   }
 
   const handleScroll = useCallback(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || clips.length === 0) return
 
     const scrollTop = containerRef.current.scrollTop
     const height = window.innerHeight
     const nextIndex = Math.round(scrollTop / height)
     const safeIndex = Math.max(0, Math.min(nextIndex, clips.length - 1))
 
-    setCurrentIndex((prev) => {
-      if (prev === safeIndex) return prev
-      return safeIndex
-    })
-
+    setCurrentIndex((prev) => (prev === safeIndex ? prev : safeIndex))
     countClipView(clips[safeIndex])
   }, [clips])
 
@@ -181,10 +167,20 @@ function Feed() {
   }, [handleScroll])
 
   useEffect(() => {
-    if (clips.length > 0) {
-      countClipView(clips[0])
-    }
+    if (clips.length > 0) countClipView(clips[0])
   }, [clips.length])
+
+  function toggleSound() {
+    const nextSoundState = !soundOn
+    setSoundOn(nextSoundState)
+
+    const currentVideo = videoRefs.current[currentIndex]
+    if (currentVideo) {
+      currentVideo.muted = !nextSoundState
+      currentVideo.volume = 1
+      currentVideo.play().catch(() => {})
+    }
+  }
 
   function handleDoubleTap(clip) {
     const now = Date.now()
@@ -214,16 +210,8 @@ function Feed() {
     if (isLiked) {
       const nextCount = Math.max(0, currentCount - 1)
 
-      await supabase
-        .from('clip_likes')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('clip_id', clip.id)
-
-      await supabase
-        .from('clips')
-        .update({ likes: nextCount })
-        .eq('id', clip.id)
+      await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', clip.id)
+      await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
 
       setLikes((prev) => ({ ...prev, [clip.id]: false }))
       setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
@@ -238,10 +226,7 @@ function Feed() {
 
     const nextCount = currentCount + 1
 
-    await supabase
-      .from('clips')
-      .update({ likes: nextCount })
-      .eq('id', clip.id)
+    await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
 
     setLikes((prev) => ({ ...prev, [clip.id]: true }))
     setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
@@ -267,12 +252,7 @@ function Feed() {
     const isBookmarked = bookmarks[clip.id]
 
     if (isBookmarked) {
-      await supabase
-        .from('bookmarks')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('clip_id', clip.id)
-
+      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', clip.id)
       setBookmarks((prev) => ({ ...prev, [clip.id]: false }))
       return
     }
@@ -359,10 +339,7 @@ function Feed() {
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-bounce">🎮</div>
-          <p
-            className="text-cyan-400 text-xs tracking-widest animate-pulse"
-            style={{ fontFamily: 'monospace' }}
-          >
+          <p className="text-cyan-400 text-xs tracking-widest animate-pulse" style={{ fontFamily: 'monospace' }}>
             LOADING FRAGS...
           </p>
         </div>
@@ -376,50 +353,37 @@ function Feed() {
         className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-4 pb-2"
         style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}
       >
-        <button
-          onClick={() => navigate(-1)}
-          className="text-white text-xl w-10 h-10 flex items-center justify-center"
-        >
+        <button onClick={() => navigate(-1)} className="text-white text-xl w-10 h-10 flex items-center justify-center">
           ←
         </button>
 
-        <div
-          className="font-black text-white tracking-widest text-sm"
-          style={{ fontFamily: 'monospace' }}
-        >
+        <div className="font-black text-white tracking-widest text-sm" style={{ fontFamily: 'monospace' }}>
           FRAGBEATS
         </div>
 
-        <button
-          onClick={() => navigate('/explore')}
-          className="text-cyan-400 text-xs tracking-widest"
-          style={{ fontFamily: 'monospace' }}
-        >
+        <button onClick={() => navigate('/explore')} className="text-cyan-400 text-xs tracking-widest" style={{ fontFamily: 'monospace' }}>
           EXPLORE
         </button>
       </div>
 
-      <div
-        ref={containerRef}
-        className="h-full overflow-y-scroll"
-        style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}
+      <button
+        type="button"
+        onClick={toggleSound}
+        className="absolute top-16 right-4 z-50 px-3 py-2 rounded-full bg-black/60 border border-white/20 text-white text-xs font-bold backdrop-blur-sm"
+        style={{ fontFamily: 'monospace' }}
       >
+        {soundOn ? '🔊 SOUND ON' : '🔇 MUTED'}
+      </button>
+
+      <div ref={containerRef} className="h-full overflow-y-scroll" style={{ scrollSnapType: 'y mandatory', scrollBehavior: 'smooth' }}>
         {clips.length === 0 && (
-          <div
-            className="flex items-center justify-center px-8 text-center"
-            style={{ height: '100dvh', background: '#040810' }}
-          >
+          <div className="flex items-center justify-center px-8 text-center" style={{ height: '100dvh', background: '#040810' }}>
             <div>
               <div className="text-5xl mb-4">🎮</div>
-              <p
-                className="text-cyan-400 font-black text-xl tracking-widest mb-2"
-                style={{ fontFamily: 'monospace' }}
-              >
+              <p className="text-cyan-400 font-black text-xl tracking-widest mb-2" style={{ fontFamily: 'monospace' }}>
                 NO VIDEO CLIPS YET
               </p>
-              <p className="text-slate-500 text-sm mb-6">
-                Upload the first playable frag.
-              </p>
+              <p className="text-slate-500 text-sm mb-6">Upload the first playable frag.</p>
               <button
                 onClick={() => navigate('/upload')}
                 className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-3 rounded-lg font-black text-sm tracking-widest hover:brightness-110 transition-all"
@@ -432,19 +396,13 @@ function Feed() {
         )}
 
         {clips.map((clip, index) => (
-          <div
-            key={clip.id}
-            className="relative w-full flex items-center justify-center"
-            style={{ height: '100dvh', scrollSnapAlign: 'start', background: '#000' }}
-          >
+          <div key={clip.id} className="relative w-full flex items-center justify-center" style={{ height: '100dvh', scrollSnapAlign: 'start', background: '#000' }}>
             <div className="w-full h-full" onClick={() => handleDoubleTap(clip)}>
               <video
-                ref={(el) => {
-                  videoRefs.current[index] = el
-                }}
+                ref={(el) => { videoRefs.current[index] = el }}
                 src={clip.video_url}
                 loop
-                muted
+                muted={!soundOn}
                 playsInline
                 preload="metadata"
                 className="w-full h-full object-cover"
@@ -463,18 +421,13 @@ function Feed() {
 
             {heartAnim[clip.id] && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                <div className="text-8xl animate-ping" style={{ animationDuration: '0.6s' }}>
-                  ❤️
-                </div>
+                <div className="text-8xl animate-ping" style={{ animationDuration: '0.6s' }}>❤️</div>
               </div>
             )}
 
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
-              }}
+              style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)' }}
             />
 
             <div className="absolute bottom-0 left-0 right-16 p-5 pointer-events-none">
@@ -489,10 +442,7 @@ function Feed() {
                 {clip.game}
               </div>
 
-              <h2
-                className="text-white font-black text-xl mb-1 leading-tight"
-                style={{ fontFamily: 'monospace' }}
-              >
+              <h2 className="text-white font-black text-xl mb-1 leading-tight" style={{ fontFamily: 'monospace' }}>
                 {clip.title}
               </h2>
 
@@ -502,15 +452,9 @@ function Feed() {
                     {getUsername(clip.user_id)[0]?.toUpperCase() || 'G'}
                   </div>
 
-                  <span className="text-white text-sm font-bold">
-                    @{getUsername(clip.user_id)}
-                  </span>
+                  <span className="text-white text-sm font-bold">@{getUsername(clip.user_id)}</span>
 
-                  {isVerified(clip.user_id) && (
-                    <span className="text-sm" title="Verified Creator">
-                      ✅
-                    </span>
-                  )}
+                  {isVerified(clip.user_id) && <span className="text-sm" title="Verified Creator">✅</span>}
                 </div>
 
                 {user?.id !== clip.user_id && (
@@ -535,7 +479,9 @@ function Feed() {
                 </div>
               )}
 
-              <p className="text-white/30 text-xs mt-2">Double tap to like</p>
+              <p className="text-white/30 text-xs mt-2">
+                {soundOn ? 'Tap video to pause' : 'Tap 🔇 to turn sound on'}
+              </p>
             </div>
 
             <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5">
@@ -544,26 +490,17 @@ function Feed() {
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-200 ${
                     likes[clip.id] ? 'scale-110' : 'group-hover:scale-110'
                   }`}
-                  style={{
-                    background: likes[clip.id]
-                      ? 'rgba(255,107,157,0.2)'
-                      : 'rgba(255,255,255,0.1)',
-                  }}
+                  style={{ background: likes[clip.id] ? 'rgba(255,107,157,0.2)' : 'rgba(255,255,255,0.1)' }}
                 >
                   {likes[clip.id] ? '❤️' : '🤍'}
                 </div>
                 <span className="text-white text-xs font-bold">
-                  {likeCounts[clip.id] > 999
-                    ? `${(likeCounts[clip.id] / 1000).toFixed(1)}K`
-                    : likeCounts[clip.id] || 0}
+                  {likeCounts[clip.id] > 999 ? `${(likeCounts[clip.id] / 1000).toFixed(1)}K` : likeCounts[clip.id] || 0}
                 </span>
               </button>
 
               <button onClick={() => navigate(`/clip/${clip.id}`)} className="flex flex-col items-center gap-1 group">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200"
-                  style={{ background: 'rgba(255,255,255,0.1)' }}
-                >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200" style={{ background: 'rgba(255,255,255,0.1)' }}>
                   💬
                 </div>
                 <span className="text-white text-xs font-bold">View</span>
@@ -574,11 +511,7 @@ function Feed() {
                   className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all duration-200 ${
                     bookmarkAnim[clip.id] ? 'scale-125' : 'group-hover:scale-110'
                   }`}
-                  style={{
-                    background: bookmarks[clip.id]
-                      ? 'rgba(251,191,36,0.2)'
-                      : 'rgba(255,255,255,0.1)',
-                  }}
+                  style={{ background: bookmarks[clip.id] ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.1)' }}
                 >
                   {bookmarks[clip.id] ? '🔖' : '📌'}
                 </div>
@@ -586,22 +519,14 @@ function Feed() {
               </button>
 
               <button onClick={() => handleWhatsAppShare(clip)} className="flex flex-col items-center gap-1 group">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200"
-                  style={{ background: 'rgba(37,211,102,0.15)' }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#25D366">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl group-hover:scale-110 transition-all duration-200" style={{ background: 'rgba(37,211,102,0.15)' }}>
+                  📤
                 </div>
                 <span className="text-white text-xs font-bold">Share</span>
               </button>
 
               <div className="flex flex-col items-center gap-1">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                  style={{ background: 'rgba(255,255,255,0.1)' }}
-                >
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ background: 'rgba(255,255,255,0.1)' }}>
                   👁
                 </div>
                 <span className="text-white text-xs font-bold">
@@ -620,16 +545,10 @@ function Feed() {
         ))}
 
         {clips.length > 0 && (
-          <div
-            className="flex items-center justify-center"
-            style={{ height: '100dvh', background: '#040810' }}
-          >
+          <div className="flex items-center justify-center" style={{ height: '100dvh', background: '#040810' }}>
             <div className="text-center">
               <div className="text-5xl mb-4">🎮</div>
-              <p
-                className="text-cyan-400 font-black text-xl tracking-widest mb-2"
-                style={{ fontFamily: 'monospace' }}
-              >
+              <p className="text-cyan-400 font-black text-xl tracking-widest mb-2" style={{ fontFamily: 'monospace' }}>
                 YOU'RE ALL CAUGHT UP
               </p>
               <p className="text-slate-500 text-sm mb-6">You've seen all the frags!</p>

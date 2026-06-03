@@ -6,6 +6,7 @@ import Auth from './pages/Auth'
 import Explore from './pages/Explore'
 import Upload from './pages/Upload'
 import Profile from './pages/Profile'
+import PublicProfile from './pages/PublicProfile'
 import Music from './pages/Music'
 import NotFound from './pages/NotFound'
 import Notifications from './pages/Notifications'
@@ -56,6 +57,7 @@ function AnimatedRoutes() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/collections" element={<Collections />} />
         <Route path="/clip/:id" element={<ClipDetail />} />
+        <Route path="/u/:username" element={<PublicProfile />} />
 
         <Route
           path="/upload"

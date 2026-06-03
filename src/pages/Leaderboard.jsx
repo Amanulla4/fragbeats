@@ -97,7 +97,6 @@ function Leaderboard() {
     }
 
     const uniqueIds = [...new Set((topClips || []).map((clip) => clip.user_id).filter(Boolean))]
-
     let usernameMap = {}
 
     if (uniqueIds.length > 0) {
@@ -105,8 +104,6 @@ function Leaderboard() {
         .from('profiles')
         .select('user_id, username')
         .in('user_id', uniqueIds)
-
-      usernameMap = {}
 
       ;(profiles || []).forEach((profile) => {
         usernameMap[profile.user_id] = profile.username
@@ -189,9 +186,11 @@ function Leaderboard() {
         {activeTab === 'Creators' && topCreators.length > 0 && (
           <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
             {topCreators.map((creator, index) => (
-              <div
+              <button
                 key={creator.user_id}
-                className={`bg-[#0b1425] border rounded-xl p-3 md:p-4 text-center transition-all duration-300 ${
+                type="button"
+                onClick={() => navigate(`/u/${creator.username}`)}
+                className={`bg-[#0b1425] border rounded-xl p-3 md:p-4 text-center transition-all duration-300 hover:brightness-110 ${
                   index === 0
                     ? 'border-yellow-400/40 -translate-y-2'
                     : index === 1
@@ -212,7 +211,7 @@ function Leaderboard() {
                 <div className="text-slate-500 text-xs mt-1">
                   {formatNum(creator.followers)} followers
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -263,9 +262,11 @@ function Leaderboard() {
 
           {activeTab === 'Creators' &&
             creators.map((creator, index) => (
-              <div
+              <button
                 key={creator.user_id}
-                className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 ${
+                type="button"
+                onClick={() => navigate(`/u/${creator.username}`)}
+                className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 text-left ${
                   index < 3
                     ? 'bg-cyan-500/5 border-cyan-500/20'
                     : 'bg-[#0b1425] border-cyan-500/10'
@@ -304,7 +305,7 @@ function Leaderboard() {
                   <div className="text-white text-xs font-bold">{formatNum(creator.followers)}</div>
                   <div className="text-slate-600 text-xs">followers</div>
                 </div>
-              </div>
+              </button>
             ))}
 
           {activeTab === 'Clips' && clips.length === 0 && (

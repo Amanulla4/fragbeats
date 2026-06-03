@@ -203,7 +203,7 @@ function Search() {
                     <button
                       key={creator.user_id}
                       type="button"
-                      onClick={() => navigate('/profile')}
+                      onClick={() => navigate(`/u/${creator.username}`)}
                       className="flex items-center gap-4 p-4 bg-[#0b1425] border border-cyan-500/10 rounded-lg cursor-pointer hover:border-cyan-400/30 transition-all duration-200 text-left"
                     >
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl font-black text-black flex-shrink-0">

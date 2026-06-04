@@ -1,3 +1,4 @@
+// src/pages/ClipDetail.jsx
 import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -249,20 +250,14 @@ function ClipDetail() {
   }
 
   async function handleLike() {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
-
+    if (!user) { navigate('/auth'); return }
     if (likeLoading) return
     setLikeLoading(true)
 
     if (liked) {
       const nextCount = Math.max(0, likeCount - 1)
-
       await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', id)
       await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
-
       setLiked(false)
       setLikeCount(nextCount)
       setLikeLoading(false)
@@ -273,9 +268,7 @@ function ClipDetail() {
 
     if (!error) {
       const nextCount = likeCount + 1
-
       await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
-
       setLiked(true)
       setLikeCount(nextCount)
       await sendNotification(clip.user_id, 'like', `liked your clip "${clip.title}"`)
@@ -285,29 +278,18 @@ function ClipDetail() {
   }
 
   async function handleFollow() {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
-
+    if (!user) { navigate('/auth'); return }
     if (followLoading || user.id === clip?.user_id) return
     setFollowLoading(true)
 
     if (following) {
-      await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', user.id)
-        .eq('following_id', clip.user_id)
-
+      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
       setFollowing(false)
       setFollowLoading(false)
       return
     }
 
-    const { error } = await supabase
-      .from('follows')
-      .insert({ follower_id: user.id, following_id: clip.user_id })
+    const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: clip.user_id })
 
     if (!error) {
       setFollowing(true)
@@ -318,10 +300,7 @@ function ClipDetail() {
   }
 
   async function handleBookmark() {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
+    if (!user) { navigate('/auth'); return }
 
     if (bookmarked) {
       await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', id)
@@ -329,22 +308,15 @@ function ClipDetail() {
       return
     }
 
-    const { error } = await supabase
-      .from('bookmarks')
-      .insert({ user_id: user.id, clip_id: Number(id) })
-
+    const { error } = await supabase.from('bookmarks').insert({ user_id: user.id, clip_id: Number(id) })
     if (!error) setBookmarked(true)
   }
 
   async function handleComment() {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
+    if (!user) { navigate('/auth'); return }
 
     const text = newComment.trim()
     if (!text || posting) return
-
     setPosting(true)
 
     const { data, error } = await supabase
@@ -378,7 +350,6 @@ function ClipDetail() {
   function handleWhatsAppShare() {
     const url = `${window.location.origin}/clip/${clip.id}`
     const text = `Check out this frag on FragBeats!\n"${clip.title}" - ${clip.game}\n${url}`
-
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -392,11 +363,9 @@ function ClipDetail() {
 
   function formatTime(timestamp) {
     const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
-
     if (diff < 60) return 'just now'
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-
     return `${Math.floor(diff / 86400)}d ago`
   }
 
@@ -524,15 +493,22 @@ function ClipDetail() {
                 </div>
               </div>
 
+              {/* ✅ Clickable creator box → /u/:username */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
-                <div className="flex items-center gap-3">
+                <button
+                  className="flex items-center gap-3 group active:opacity-70 transition-opacity"
+                  onClick={() => clipCreator && navigate(`/u/${clipCreator}`)}
+                  style={{ cursor: clipCreator ? 'pointer' : 'default' }}
+                >
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl">
                     🎮
                   </div>
 
                   <div>
                     <div className="flex items-center gap-1">
-                      <div className="text-cyan-400 font-bold text-sm">@{creatorName}</div>
+                      <div className="text-cyan-400 font-bold text-sm group-hover:text-cyan-300 transition-colors">
+                        @{creatorName}
+                      </div>
                       {clipCreatorVerified && <span title="Verified Creator" className="text-sm">✅</span>}
                     </div>
 
@@ -541,7 +517,7 @@ function ClipDetail() {
                       <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-1" title="Live" />
                     </div>
                   </div>
-                </div>
+                </button>
 
                 {!isOwnClip ? (
                   <button
@@ -624,7 +600,19 @@ function ClipDetail() {
 
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-cyan-400 text-xs font-bold">@{getUsername(comment.user_id)}</span>
+                          {/* ✅ Clickable comment username → /u/:username */}
+                          {usernames[comment.user_id] ? (
+                            <button
+                              className="text-cyan-400 text-xs font-bold hover:text-cyan-300 transition-colors"
+                              onClick={() => navigate(`/u/${usernames[comment.user_id]}`)}
+                            >
+                              @{usernames[comment.user_id]}
+                            </button>
+                          ) : (
+                            <span className="text-cyan-400 text-xs font-bold">
+                              @{getUsername(comment.user_id)}
+                            </span>
+                          )}
                           {isVerified(comment.user_id) && <span className="text-xs">✅</span>}
                           <span className="text-slate-600 text-xs">{formatTime(comment.created_at)}</span>
                         </div>

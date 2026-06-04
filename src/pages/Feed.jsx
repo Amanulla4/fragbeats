@@ -1,3 +1,4 @@
+// src/pages/Feed.jsx
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -325,6 +326,12 @@ function Feed() {
     return verifiedMap[userId] || false
   }
 
+  function handleCreatorClick(e, clip) {
+    e.stopPropagation()
+    const username = usernames[clip.user_id]
+    if (username) navigate(`/u/${username}`)
+  }
+
   const gameColors = {
     BGMI: '#00f5ff',
     Valorant: '#bf00ff',
@@ -447,19 +454,21 @@ function Feed() {
               </h2>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 pointer-events-auto">
+                {/* ✅ Clickable creator row → /u/:username */}
+                <button
+                  className="flex items-center gap-2 pointer-events-auto active:opacity-70 transition-opacity"
+                  onClick={(e) => handleCreatorClick(e, clip)}
+                >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black">
                     {getUsername(clip.user_id)[0]?.toUpperCase() || 'G'}
                   </div>
-
                   <span className="text-white text-sm font-bold">@{getUsername(clip.user_id)}</span>
-
                   {isVerified(clip.user_id) && <span className="text-sm" title="Verified Creator">✅</span>}
-                </div>
+                </button>
 
                 {user?.id !== clip.user_id && (
                   <button
-                    onClick={() => handleFollow(clip)}
+                    onClick={(e) => { e.stopPropagation(); handleFollow(clip) }}
                     className={`ml-1 px-3 py-1 rounded text-xs font-black tracking-widest pointer-events-auto transition-all duration-200 ${
                       following[clip.user_id]
                         ? 'border border-white/30 text-white/70'

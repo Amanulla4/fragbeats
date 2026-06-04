@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+// src/App.jsx
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
 import Home from './pages/Home'
@@ -22,11 +23,43 @@ import Terms from './pages/Terms'
 import Blog from './pages/Blog'
 import Feed from './pages/Feed'
 import Collections from './pages/Collections'
+import Onboarding from './pages/Onboarding'
 
 import ScrollToTop from './components/ScrollToTop'
 import PageLoader from './components/PageLoader'
 import MusicPlayer from './components/MusicPlayer'
 import ProtectedRoute from './components/ProtectedRoute'
+import { useAuth } from './context/AuthContext'
+
+// ✅ Redirects new users (no username) to /onboarding
+// Redirects logged-out users to /auth
+function OnboardingGuard({ children }) {
+  const { user, loading, profile, profileLoading } = useAuth()
+
+  if (loading || profileLoading) return null
+
+  if (!user) return <Navigate to="/auth" replace />
+
+  // Already has a username — let them through
+  if (profile?.username) return children
+
+  // No username yet — send to onboarding
+  return <Navigate to="/onboarding" replace />
+}
+
+// ✅ Prevents already-onboarded users from re-visiting /onboarding
+function OnboardingRoute() {
+  const { user, loading, profile, profileLoading } = useAuth()
+
+  if (loading || profileLoading) return null
+
+  if (!user) return <Navigate to="/auth" replace />
+
+  // Already onboarded — send to feed
+  if (profile?.username) return <Navigate to="/feed" replace />
+
+  return <Onboarding />
+}
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -59,48 +92,51 @@ function AnimatedRoutes() {
         <Route path="/clip/:id" element={<ClipDetail />} />
         <Route path="/u/:username" element={<PublicProfile />} />
 
+        {/* ✅ Onboarding — smart redirect built in */}
+        <Route path="/onboarding" element={<OnboardingRoute />} />
+
         <Route
           path="/upload"
           element={
-            <ProtectedRoute>
+            <OnboardingGuard>
               <Upload />
-            </ProtectedRoute>
+            </OnboardingGuard>
           }
         />
 
         <Route
           path="/profile"
           element={
-            <ProtectedRoute>
+            <OnboardingGuard>
               <Profile />
-            </ProtectedRoute>
+            </OnboardingGuard>
           }
         />
 
         <Route
           path="/notifications"
           element={
-            <ProtectedRoute>
+            <OnboardingGuard>
               <Notifications />
-            </ProtectedRoute>
+            </OnboardingGuard>
           }
         />
 
         <Route
           path="/analytics"
           element={
-            <ProtectedRoute>
+            <OnboardingGuard>
               <Analytics />
-            </ProtectedRoute>
+            </OnboardingGuard>
           }
         />
 
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <OnboardingGuard>
               <Settings />
-            </ProtectedRoute>
+            </OnboardingGuard>
           }
         />
 

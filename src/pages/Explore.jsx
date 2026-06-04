@@ -1,5 +1,6 @@
+// src/pages/Explore.jsx
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CommentModal from '../components/CommentModal'
@@ -107,9 +108,13 @@ function ClipCard({ clip, onLike, liked, onComment, onShare, onClick }) {
 function Explore() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const loaderRef = useRef(null)
 
-  const [activeGame, setActiveGame] = useState('All')
+  // ✅ Read ?game= from URL on first render; fall back to 'All'
+  const initialGame = GAMES.includes(searchParams.get('game')) ? searchParams.get('game') : 'All'
+
+  const [activeGame, setActiveGame] = useState(initialGame)
   const [search, setSearch] = useState('')
   const [liked, setLiked] = useState([])
   const [activeComment, setActiveComment] = useState(null)
@@ -126,6 +131,16 @@ function Explore() {
   useEffect(() => {
     setVisibleCount(8)
   }, [activeGame, search])
+
+  // ✅ Sync URL when filter changes
+  function handleGameChange(game) {
+    setActiveGame(game)
+    if (game === 'All') {
+      setSearchParams({})
+    } else {
+      setSearchParams({ game })
+    }
+  }
 
   async function fetchClips() {
     setIsLoading(true)
@@ -276,7 +291,7 @@ function Explore() {
             <button
               key={game}
               type="button"
-              onClick={() => setActiveGame(game)}
+              onClick={() => handleGameChange(game)}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all duration-200 ${
                 activeGame === game
                   ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black'

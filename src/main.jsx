@@ -7,17 +7,20 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { NotificationProvider } from './context/NotificationContext'
+import { ToastProvider } from './context/ToastContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <HelmetProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <NotificationProvider>
-            <App />
-          </NotificationProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </ToastProvider>
     </HelmetProvider>
   </StrictMode>
 )

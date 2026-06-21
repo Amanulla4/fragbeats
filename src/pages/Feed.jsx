@@ -3,11 +3,13 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import SEO from '../components/SEO'
 
 function Feed() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const toast = useToast()
 
   const [clips, setClips] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -56,6 +58,7 @@ function Feed() {
 
     if (error) {
       console.error('Feed clips error:', error.message)
+      toast.error('Could not load feed. Pull to refresh.')
       setLoading(false)
       return
     }
@@ -143,6 +146,7 @@ function Feed() {
       prev.map((item) => (item.id === clip.id ? { ...item, views: nextViews } : item))
     )
 
+    // Non-critical, fail silently — view count isn't worth interrupting the user
     await supabase.from('clips').update({ views: nextViews }).eq('id', clip.id)
   }
 
@@ -198,6 +202,7 @@ function Feed() {
     lastTapRef.current[clip.id] = now
   }
 
+  // ── Like: optimistic update with rollback on failure ──────────────────────
   async function handleLike(clip) {
     if (!user) { navigate('/auth'); return }
 
@@ -206,23 +211,47 @@ function Feed() {
 
     if (isLiked) {
       const nextCount = Math.max(0, currentCount - 1)
-      await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', clip.id)
-      await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
+
+      // Optimistic update first
       setLikes((prev) => ({ ...prev, [clip.id]: false }))
       setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
+
+      const { error: deleteError } = await supabase
+        .from('clip_likes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('clip_id', clip.id)
+
+      if (deleteError) {
+        // Rollback
+        setLikes((prev) => ({ ...prev, [clip.id]: true }))
+        setLikeCounts((prev) => ({ ...prev, [clip.id]: currentCount }))
+        toast.error('Could not unlike. Try again.')
+        return
+      }
+
+      await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
       return
     }
+
+    // Optimistic update first
+    setLikes((prev) => ({ ...prev, [clip.id]: true }))
+    setLikeCounts((prev) => ({ ...prev, [clip.id]: currentCount + 1 }))
 
     const { error } = await supabase
       .from('clip_likes')
       .insert({ user_id: user.id, clip_id: clip.id })
 
-    if (error) return
+    if (error) {
+      // Rollback
+      setLikes((prev) => ({ ...prev, [clip.id]: false }))
+      setLikeCounts((prev) => ({ ...prev, [clip.id]: currentCount }))
+      toast.error('Could not like clip. Try again.')
+      return
+    }
 
     const nextCount = currentCount + 1
     await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
-    setLikes((prev) => ({ ...prev, [clip.id]: true }))
-    setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
 
     if (clip.user_id && user.id !== clip.user_id) {
       await supabase.from('notifications').insert({
@@ -236,25 +265,46 @@ function Feed() {
     }
   }
 
+  // ── Bookmark: optimistic update with rollback + toast ──────────────────────
   async function handleBookmark(clip) {
     if (!user) { navigate('/auth'); return }
 
     const isBookmarked = bookmarks[clip.id]
 
     if (isBookmarked) {
-      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', clip.id)
       setBookmarks((prev) => ({ ...prev, [clip.id]: false }))
+
+      const { error } = await supabase
+        .from('bookmarks')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('clip_id', clip.id)
+
+      if (error) {
+        setBookmarks((prev) => ({ ...prev, [clip.id]: true }))
+        toast.error('Could not remove bookmark.')
+        return
+      }
+
+      toast.show('Removed from saved', { icon: '🗑️' })
       return
     }
+
+    setBookmarks((prev) => ({ ...prev, [clip.id]: true }))
+    setBookmarkAnim((prev) => ({ ...prev, [clip.id]: true }))
 
     const { error } = await supabase
       .from('bookmarks')
       .insert({ user_id: user.id, clip_id: clip.id })
 
-    if (error) return
+    if (error) {
+      setBookmarks((prev) => ({ ...prev, [clip.id]: false }))
+      setBookmarkAnim((prev) => ({ ...prev, [clip.id]: false }))
+      toast.error('Could not save clip.')
+      return
+    }
 
-    setBookmarks((prev) => ({ ...prev, [clip.id]: true }))
-    setBookmarkAnim((prev) => ({ ...prev, [clip.id]: true }))
+    toast.success('Saved to your collection', { icon: '🔖' })
 
     setTimeout(() => {
       setBookmarkAnim((prev) => ({ ...prev, [clip.id]: false }))
@@ -267,25 +317,45 @@ function Feed() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
+  // ── Follow: optimistic update with rollback + toast ─────────────────────────
   async function handleFollow(clip) {
     if (!user) { navigate('/auth'); return }
     if (!clip.user_id || user.id === clip.user_id) return
 
     const isFollowing = following[clip.user_id]
+    const username = usernames[clip.user_id]
 
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
       setFollowing((prev) => ({ ...prev, [clip.user_id]: false }))
+
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', clip.user_id)
+
+      if (error) {
+        setFollowing((prev) => ({ ...prev, [clip.user_id]: true }))
+        toast.error('Could not unfollow. Try again.')
+        return
+      }
+
       return
     }
+
+    setFollowing((prev) => ({ ...prev, [clip.user_id]: true }))
 
     const { error } = await supabase
       .from('follows')
       .insert({ follower_id: user.id, following_id: clip.user_id })
 
-    if (error) return
+    if (error) {
+      setFollowing((prev) => ({ ...prev, [clip.user_id]: false }))
+      toast.error('Could not follow. Try again.')
+      return
+    }
 
-    setFollowing((prev) => ({ ...prev, [clip.user_id]: true }))
+    toast.success(username ? `Following @${username}` : 'Following', { icon: '✅' })
 
     await supabase.from('notifications').insert({
       user_id: clip.user_id,

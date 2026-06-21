@@ -7,6 +7,7 @@ import ShareModal from '../components/ShareModal'
 import ReportModal from '../components/ReportModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import SEO from '../components/SEO'
 
 const TYPE_GAME_COLOR = {
@@ -22,6 +23,7 @@ function ClipDetail() {
   const navigate = useNavigate()
   const { id } = useParams()
   const { user } = useAuth()
+  const toast = useToast()
 
   const [clip, setClip] = useState(null)
   const [clipCreator, setClipCreator] = useState('')
@@ -250,69 +252,130 @@ function ClipDetail() {
     })
   }
 
+  // ── Like: optimistic + rollback + toast on failure only ────────────────────
   async function handleLike() {
     if (!user) { navigate('/auth'); return }
     if (likeLoading) return
     setLikeLoading(true)
 
     if (liked) {
+      const prevCount = likeCount
       const nextCount = Math.max(0, likeCount - 1)
-      await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', id)
-      await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
+
       setLiked(false)
       setLikeCount(nextCount)
+
+      const { error } = await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', id)
+
+      if (error) {
+        setLiked(true)
+        setLikeCount(prevCount)
+        toast.error('Could not unlike. Try again.')
+        setLikeLoading(false)
+        return
+      }
+
+      await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
       setLikeLoading(false)
       return
     }
 
+    const prevCount = likeCount
+    const nextCount = likeCount + 1
+
+    setLiked(true)
+    setLikeCount(nextCount)
+
     const { error } = await supabase.from('clip_likes').insert({ user_id: user.id, clip_id: id })
 
-    if (!error) {
-      const nextCount = likeCount + 1
-      await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
-      setLiked(true)
-      setLikeCount(nextCount)
-      await sendNotification(clip.user_id, 'like', `liked your clip "${clip.title}"`)
+    if (error) {
+      setLiked(false)
+      setLikeCount(prevCount)
+      toast.error('Could not like clip. Try again.')
+      setLikeLoading(false)
+      return
     }
 
+    await supabase.from('clips').update({ likes: nextCount }).eq('id', id)
+    await sendNotification(clip.user_id, 'like', `liked your clip "${clip.title}"`)
     setLikeLoading(false)
   }
 
+  // ── Follow: optimistic + rollback + success toast ───────────────────────────
   async function handleFollow() {
     if (!user) { navigate('/auth'); return }
     if (followLoading || user.id === clip?.user_id) return
     setFollowLoading(true)
 
     if (following) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
       setFollowing(false)
+
+      const { error } = await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('following_id', clip.user_id)
+
+      if (error) {
+        setFollowing(true)
+        toast.error('Could not unfollow. Try again.')
+      }
+
       setFollowLoading(false)
       return
     }
 
-    const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: clip.user_id })
+    setFollowing(true)
 
-    if (!error) {
-      setFollowing(true)
-      await sendNotification(clip.user_id, 'follow', 'started following you')
+    const { error } = await supabase
+      .from('follows')
+      .insert({ follower_id: user.id, following_id: clip.user_id })
+
+    if (error) {
+      setFollowing(false)
+      toast.error('Could not follow. Try again.')
+      setFollowLoading(false)
+      return
     }
 
+    toast.success(clipCreator ? `Following @${clipCreator}` : 'Following', { icon: '✅' })
+    await sendNotification(clip.user_id, 'follow', 'started following you')
     setFollowLoading(false)
   }
 
+  // ── Bookmark: optimistic + rollback + success toast ─────────────────────────
   async function handleBookmark() {
     if (!user) { navigate('/auth'); return }
 
     if (bookmarked) {
-      await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', id)
       setBookmarked(false)
+
+      const { error } = await supabase.from('bookmarks').delete().eq('user_id', user.id).eq('clip_id', id)
+
+      if (error) {
+        setBookmarked(true)
+        toast.error('Could not remove bookmark.')
+        return
+      }
+
+      toast.show('Removed from saved', { icon: '🗑️' })
       return
     }
 
+    setBookmarked(true)
+
     const { error } = await supabase.from('bookmarks').insert({ user_id: user.id, clip_id: Number(id) })
-    if (!error) setBookmarked(true)
+
+    if (error) {
+      setBookmarked(false)
+      toast.error('Could not save clip.')
+      return
+    }
+
+    toast.success('Saved to your collection', { icon: '🔖' })
   }
 
+  // ── Comment: optimistic insert + rollback on failure ────────────────────────
   async function handleComment() {
     if (!user) { navigate('/auth'); return }
 
@@ -320,31 +383,51 @@ function ClipDetail() {
     if (!text || posting) return
     setPosting(true)
 
+    // Optimistic temp comment
+    const tempId = `temp-${Date.now()}`
+    const optimisticComment = {
+      id: tempId,
+      user_id: user.id,
+      clip_id: Number(id),
+      text,
+      created_at: new Date().toISOString(),
+    }
+
+    setComments((prev) => [optimisticComment, ...prev])
+    setNewComment('')
+
     const { data, error } = await supabase
       .from('comments')
       .insert({ user_id: user.id, clip_id: Number(id), text })
       .select()
       .single()
 
-    if (!error && data) {
-      if (!usernames[user.id]) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('username, verified')
-          .eq('user_id', user.id)
-          .single()
-
-        if (profile?.username) {
-          setUsernames((prev) => ({ ...prev, [user.id]: profile.username }))
-          setVerifiedMap((prev) => ({ ...prev, [user.id]: profile.verified || false }))
-        }
-      }
-
-      setComments((prev) => [data, ...prev])
-      setNewComment('')
-      await sendNotification(clip.user_id, 'comment', `commented on your clip "${clip.title}"`)
+    if (error || !data) {
+      // Rollback: remove the optimistic comment
+      setComments((prev) => prev.filter((c) => c.id !== tempId))
+      setNewComment(text)
+      toast.error('Could not post comment. Try again.')
+      setPosting(false)
+      return
     }
 
+    // Replace temp comment with real one
+    setComments((prev) => prev.map((c) => (c.id === tempId ? data : c)))
+
+    if (!usernames[user.id]) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, verified')
+        .eq('user_id', user.id)
+        .single()
+
+      if (profile?.username) {
+        setUsernames((prev) => ({ ...prev, [user.id]: profile.username }))
+        setVerifiedMap((prev) => ({ ...prev, [user.id]: profile.verified || false }))
+      }
+    }
+
+    await sendNotification(clip.user_id, 'comment', `commented on your clip "${clip.title}"`)
     setPosting(false)
   }
 
@@ -601,7 +684,10 @@ function ClipDetail() {
               {!commentsLoading && comments.length > 0 && (
                 <div className="flex flex-col gap-4">
                   {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
+                    <div
+                      key={comment.id}
+                      className={`flex gap-3 ${String(comment.id).startsWith('temp-') ? 'opacity-60' : ''}`}
+                    >
                       <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xs font-black text-black flex-shrink-0">
                         {getUsername(comment.user_id)[0].toUpperCase()}
                       </div>
@@ -621,7 +707,9 @@ function ClipDetail() {
                             </span>
                           )}
                           {isVerified(comment.user_id) && <span className="text-xs">✅</span>}
-                          <span className="text-slate-600 text-xs">{formatTime(comment.created_at)}</span>
+                          <span className="text-slate-600 text-xs">
+                            {String(comment.id).startsWith('temp-') ? 'posting...' : formatTime(comment.created_at)}
+                          </span>
                         </div>
 
                         <p className="text-slate-300 text-sm">{comment.text}</p>

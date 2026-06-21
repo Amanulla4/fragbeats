@@ -1,7 +1,9 @@
+// src/pages/Pricing.jsx
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
+import SEO from '../components/SEO'
 
 const PLANS = [
   {
@@ -74,6 +76,11 @@ function Pricing() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Pricing"
+        description="Simple, transparent pricing for FragBeats creators. Start free, upgrade when you're ready."
+        url="/pricing"
+      />
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-8 pt-32 pb-16">

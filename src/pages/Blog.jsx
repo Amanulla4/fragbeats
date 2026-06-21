@@ -1,6 +1,8 @@
+// src/pages/Blog.jsx
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import SEO from '../components/SEO'
 
 const CATEGORIES = ['All', 'Updates', 'Gaming', 'Music', 'Creator Tips']
 
@@ -86,6 +88,11 @@ function Blog() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Blog"
+        description="Updates, gaming tips and music vibes from the FragBeats team."
+        url="/blog"
+      />
       <Navbar />
 
       <div className="max-w-5xl mx-auto px-8 pt-32 pb-16">

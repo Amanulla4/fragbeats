@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const GAMES = ['BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V', 'Other']
 
@@ -51,7 +52,6 @@ function extractThumbnail(videoFile) {
       canvas.toBlob((blob) => { URL.revokeObjectURL(url); resolve(blob) }, 'image/jpeg', 0.8)
     }
     video.onerror = () => { URL.revokeObjectURL(url); resolve(null) }
-    // ✅ Fallback: if seeking never fires (some formats), resolve after timeout
     setTimeout(() => { URL.revokeObjectURL(url); resolve(null) }, 8000)
   })
 }
@@ -78,13 +78,11 @@ function Upload() {
   async function handleFileSelect(file) {
     if (!file) return
 
-    // ✅ Must be a video file
     if (!file.type.startsWith('video/')) {
       setError('Please upload a video file (MP4, MOV, AVI, etc.)')
       return
     }
 
-    // ✅ Max 500MB
     if (file.size > 500 * 1024 * 1024) {
       setError(`File too large (${(file.size / (1024 * 1024)).toFixed(0)}MB). Maximum size is 500MB.`)
       return
@@ -97,7 +95,6 @@ function Upload() {
     if (blob) {
       setThumbnailPreview(URL.createObjectURL(blob))
     } else {
-      // ✅ No thumbnail is fine — still allow upload
       setThumbnailPreview(null)
     }
   }
@@ -113,13 +110,11 @@ function Upload() {
   }
 
   async function handleSubmit() {
-    // ✅ Guard: must have video file
     if (!videoFile) {
       setError('No video file selected.')
       return
     }
 
-    // ✅ Guard: double-check it's still a video
     if (!videoFile.type.startsWith('video/')) {
       setError('Invalid file type. Please upload a video.')
       return
@@ -134,7 +129,6 @@ function Upload() {
       const fileExt = videoFile.name.split('.').pop() || 'mp4'
       const baseName = `${user.id}_${Date.now()}`
 
-      // ── Step 1: Thumbnail (optional, never blocks upload) ──────────────────
       let thumbnailUrl = null
       const thumbBlob = await extractThumbnail(videoFile)
 
@@ -156,13 +150,11 @@ function Upload() {
             .getPublicUrl(`${baseName}_thumb.jpg`)
           thumbnailUrl = thumbUrlData?.publicUrl || null
         }
-        // Thumbnail failure is non-fatal — continue
       }
 
       setUploadProgress(30)
       setUploadStage('Uploading video...')
 
-      // ── Step 2: Upload video ───────────────────────────────────────────────
       const videoPath = `${baseName}.${fileExt}`
 
       const { error: storageError } = await supabase.storage
@@ -172,7 +164,6 @@ function Upload() {
           upsert: false,
         })
 
-      // ✅ If video upload fails, throw immediately — do NOT insert clip record
       if (storageError) {
         throw new Error(`Video upload failed: ${storageError.message}`)
       }
@@ -180,7 +171,6 @@ function Upload() {
       setUploadProgress(80)
       setUploadStage('Getting video URL...')
 
-      // ✅ Verify we actually get a public URL before saving
       const { data: urlData } = supabase.storage.from('clips').getPublicUrl(videoPath)
 
       if (!urlData?.publicUrl) {
@@ -191,7 +181,6 @@ function Upload() {
       setUploadProgress(90)
       setUploadStage('Saving clip...')
 
-      // ── Step 3: Insert DB record ───────────────────────────────────────────
       const selectedTrackData = MUSIC_TRACKS.find((t) => t.id === selectedTrack)
 
       const { error: dbError } = await supabase.from('clips').insert({
@@ -200,8 +189,8 @@ function Upload() {
         music: selectedTrackData?.name || null,
         emoji: gameEmojis[selectedGame] || '🎮',
         color: gameColors[selectedGame] || '#00f5ff',
-        video_url: videoUrl,          // ✅ Guaranteed non-null
-        thumbnail_url: thumbnailUrl,  // null is fine
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl,
         views: 0,
         likes: 0,
         user_id: user.id,
@@ -225,7 +214,6 @@ function Upload() {
     }
   }
 
-  // ── Upload stage label for progress bar ───────────────────────────────────
   function getProgressLabel() {
     if (uploadStage) return uploadStage
     if (uploadProgress < 30) return 'Generating thumbnail...'
@@ -237,6 +225,7 @@ function Upload() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#040810] flex items-center justify-center">
+        <SEO title="Upload Complete" url="/upload" />
         <div className="text-center">
           <div className="text-7xl mb-6">🔥</div>
           <h2 className="font-black text-4xl text-white mb-4" style={{ fontFamily: 'monospace' }}>CLIP UPLOADED!</h2>
@@ -249,6 +238,11 @@ function Upload() {
 
   return (
     <div className="min-h-screen bg-[#040810]">
+      <SEO
+        title="Upload Your Frag"
+        description="Share your best gaming moment with the FragBeats community."
+        url="/upload"
+      />
       <Navbar />
 
       {previewTrack && (
@@ -265,7 +259,6 @@ function Upload() {
         <h1 className="font-black text-4xl text-white mb-2" style={{ fontFamily: 'monospace' }}>Drop Your Frag 🎮</h1>
         <p className="text-slate-400 mb-10">Share your best gaming moment with the world</p>
 
-        {/* Steps indicator */}
         <div className="flex items-center gap-3 mb-10">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-3">
@@ -295,7 +288,6 @@ function Upload() {
           </div>
         )}
 
-        {/* ── STEP 1: Video file ─────────────────────────────────────────── */}
         {step === 1 && (
           <div>
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileInput} className="hidden" />
@@ -357,7 +349,6 @@ function Upload() {
           </div>
         )}
 
-        {/* ── STEP 2: Title + Game ───────────────────────────────────────── */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
             {thumbnailPreview && (
@@ -428,7 +419,6 @@ function Upload() {
           </div>
         )}
 
-        {/* ── STEP 3: Music (optional) + Upload ─────────────────────────── */}
         {step === 3 && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -512,7 +502,6 @@ function Upload() {
               </div>
             )}
 
-            {/* ✅ Progress bar — always visible while saving, regardless of music choice */}
             {saving && (
               <div className="mb-6">
                 <div className="flex justify-between text-xs text-slate-400 mb-2">
@@ -538,7 +527,6 @@ function Upload() {
                 ← BACK
               </button>
 
-              {/* ✅ Single upload button — handles both skip-music and with-music */}
               <button
                 onClick={handleSubmit}
                 disabled={saving}

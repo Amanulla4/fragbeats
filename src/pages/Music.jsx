@@ -1,6 +1,8 @@
+// src/pages/Music.jsx
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import SEO from '../components/SEO'
 
 const GENRES = ['All', 'Lo-fi', 'Synthwave', 'Bass', 'Ambient', 'Hip-hop']
 
@@ -33,6 +35,11 @@ function Music() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Music"
+        description="Browse free lo-fi and gaming music tracks on FragBeats."
+        url="/music"
+      />
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 function Feed() {
   const navigate = useNavigate()
@@ -33,9 +34,7 @@ function Feed() {
   useEffect(() => {
     Object.entries(videoRefs.current).forEach(([index, video]) => {
       if (!video) return
-
       video.muted = !soundOn
-
       if (Number(index) === currentIndex) {
         video.play().catch(() => {})
       } else {
@@ -200,20 +199,15 @@ function Feed() {
   }
 
   async function handleLike(clip) {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
+    if (!user) { navigate('/auth'); return }
 
     const isLiked = likes[clip.id]
     const currentCount = likeCounts[clip.id] || 0
 
     if (isLiked) {
       const nextCount = Math.max(0, currentCount - 1)
-
       await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', clip.id)
       await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
-
       setLikes((prev) => ({ ...prev, [clip.id]: false }))
       setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
       return
@@ -226,9 +220,7 @@ function Feed() {
     if (error) return
 
     const nextCount = currentCount + 1
-
     await supabase.from('clips').update({ likes: nextCount }).eq('id', clip.id)
-
     setLikes((prev) => ({ ...prev, [clip.id]: true }))
     setLikeCounts((prev) => ({ ...prev, [clip.id]: nextCount }))
 
@@ -245,10 +237,7 @@ function Feed() {
   }
 
   async function handleBookmark(clip) {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
+    if (!user) { navigate('/auth'); return }
 
     const isBookmarked = bookmarks[clip.id]
 
@@ -275,27 +264,17 @@ function Feed() {
   function handleWhatsAppShare(clip) {
     const url = `${window.location.origin}/clip/${clip.id}`
     const text = `Check out this frag on FragBeats!\n"${clip.title}" - ${clip.game}\n${url}`
-
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer')
   }
 
   async function handleFollow(clip) {
-    if (!user) {
-      navigate('/auth')
-      return
-    }
-
+    if (!user) { navigate('/auth'); return }
     if (!clip.user_id || user.id === clip.user_id) return
 
     const isFollowing = following[clip.user_id]
 
     if (isFollowing) {
-      await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', user.id)
-        .eq('following_id', clip.user_id)
-
+      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', clip.user_id)
       setFollowing((prev) => ({ ...prev, [clip.user_id]: false }))
       return
     }
@@ -356,6 +335,12 @@ function Feed() {
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
+      <SEO
+        title="Feed"
+        description="Scroll through the latest gaming frags on FragBeats."
+        url="/feed"
+      />
+
       <div
         className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-4 pb-2"
         style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)' }}
@@ -363,11 +348,9 @@ function Feed() {
         <button onClick={() => navigate(-1)} className="text-white text-xl w-10 h-10 flex items-center justify-center">
           ←
         </button>
-
         <div className="font-black text-white tracking-widest text-sm" style={{ fontFamily: 'monospace' }}>
           FRAGBEATS
         </div>
-
         <button onClick={() => navigate('/explore')} className="text-cyan-400 text-xs tracking-widest" style={{ fontFamily: 'monospace' }}>
           EXPLORE
         </button>
@@ -416,7 +399,6 @@ function Feed() {
                 onClick={(event) => {
                   event.stopPropagation()
                   handleDoubleTap(clip)
-
                   if (event.currentTarget.paused) {
                     event.currentTarget.play().catch(() => {})
                   } else {
@@ -454,7 +436,6 @@ function Feed() {
               </h2>
 
               <div className="flex items-center gap-2">
-                {/* ✅ Clickable creator row → /u/:username */}
                 <button
                   className="flex items-center gap-2 pointer-events-auto active:opacity-70 transition-opacity"
                   onClick={(e) => handleCreatorClick(e, clip)}

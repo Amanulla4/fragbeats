@@ -1,9 +1,11 @@
+// src/pages/Profile.jsx
 import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const gameColors = {
   BGMI: '#00f5ff',
@@ -194,10 +196,7 @@ function ClipGrid({ clips, navigate, onDelete, showDelete = false }) {
             {showDelete && (
               <button
                 type="button"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onDelete(clip)
-                }}
+                onClick={(event) => { event.stopPropagation(); onDelete(clip) }}
                 className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/70 flex items-center justify-center text-sm transition-all duration-200 hover:bg-red-500/80 text-slate-300"
                 title="Delete clip"
               >
@@ -228,7 +227,7 @@ function ClipGrid({ clips, navigate, onDelete, showDelete = false }) {
               )}
 
               <div className="absolute w-12 h-12 rounded-full border-2 border-white/20 bg-black/50 flex items-center justify-center text-sm backdrop-blur-sm group-hover:border-cyan-400/60 group-hover:scale-110 transition-all duration-300">
-                {hasVideo ? '▶' : '!' }
+                {hasVideo ? '▶' : '!'}
               </div>
             </div>
 
@@ -236,10 +235,7 @@ function ClipGrid({ clips, navigate, onDelete, showDelete = false }) {
               className={`p-4 ${hasVideo ? 'cursor-pointer' : ''}`}
               onClick={() => hasVideo && navigate(`/clip/${clip.id}`)}
             >
-              <div
-                className="font-black text-xs tracking-widest mb-1"
-                style={{ fontFamily: 'monospace', color }}
-              >
+              <div className="font-black text-xs tracking-widest mb-1" style={{ fontFamily: 'monospace', color }}>
                 {clip.game || 'Other'}
               </div>
               <div className="text-white text-sm font-bold mb-1 truncate">
@@ -304,16 +300,10 @@ function Profile() {
 
     const channel = supabase
       .channel(`profile-followers:${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` },
-        () => setFollowerCount((prev) => prev + 1)
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` },
-        () => setFollowerCount((prev) => Math.max(0, prev - 1))
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` },
+        () => setFollowerCount((prev) => prev + 1))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'follows', filter: `following_id=eq.${user.id}` },
+        () => setFollowerCount((prev) => Math.max(0, prev - 1)))
       .subscribe()
 
     followerChannelRef.current = channel
@@ -376,9 +366,7 @@ function Profile() {
       .update({ username: newUsername, bio: newBio })
       .eq('user_id', user.id)
 
-    if (error) {
-      return { error: error.message || 'Could not update profile' }
-    }
+    if (error) return { error: error.message || 'Could not update profile' }
 
     setUsername(newUsername)
     setBio(newBio)
@@ -423,6 +411,11 @@ function Profile() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title={`@${displayName} — My Profile`}
+        description="Manage your FragBeats profile, clips and saved content."
+        url="/profile"
+      />
       <Navbar />
 
       {editOpen && (
@@ -463,10 +456,7 @@ function Profile() {
 
             <div className="flex-1 text-center md:text-left">
               <div className="flex items-center gap-2 justify-center md:justify-start mb-1">
-                <h1
-                  className="font-black text-2xl text-white tracking-widest"
-                  style={{ fontFamily: 'monospace' }}
-                >
+                <h1 className="font-black text-2xl text-white tracking-widest" style={{ fontFamily: 'monospace' }}>
                   @{displayName}
                 </h1>
                 {verified && <span title="Verified Creator" className="text-xl">✅</span>}

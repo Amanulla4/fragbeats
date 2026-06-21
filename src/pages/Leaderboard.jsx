@@ -1,8 +1,10 @@
+// src/pages/Leaderboard.jsx
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import SEO from '../components/SEO'
 
 const TABS = ['Creators', 'Clips']
 
@@ -51,15 +53,8 @@ function Leaderboard() {
 
     ;(clipData || []).forEach((clip) => {
       if (!clip.user_id) return
-
-      if (!clipStats[clip.user_id]) {
-        clipStats[clip.user_id] = { clips: 0, views: 0, likes: 0 }
-      }
-
-      if (clip.video_url) {
-        clipStats[clip.user_id].clips += 1
-      }
-
+      if (!clipStats[clip.user_id]) clipStats[clip.user_id] = { clips: 0, views: 0, likes: 0 }
+      if (clip.video_url) clipStats[clip.user_id].clips += 1
       clipStats[clip.user_id].views += clip.views || 0
       clipStats[clip.user_id].likes += clip.likes || 0
     })
@@ -136,10 +131,7 @@ function Leaderboard() {
         <div className="max-w-3xl mx-auto px-5 md:px-8 pt-32">
           <div className="flex flex-col gap-3">
             {[1, 2, 3, 4, 5].map((item) => (
-              <div
-                key={item}
-                className="h-16 bg-[#0b1425] rounded-lg animate-pulse border border-cyan-500/10"
-              />
+              <div key={item} className="h-16 bg-[#0b1425] rounded-lg animate-pulse border border-cyan-500/10" />
             ))}
           </div>
         </div>
@@ -149,17 +141,17 @@ function Leaderboard() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Leaderboard"
+        description="Top gaming creators and clips on FragBeats."
+        url="/leaderboard"
+      />
       <Navbar />
 
       <div className="max-w-3xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">
-        <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">
-          // LEADERBOARD
-        </p>
+        <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// LEADERBOARD</p>
 
-        <h1
-          className="font-black text-4xl md:text-5xl text-white mb-2"
-          style={{ fontFamily: 'monospace' }}
-        >
+        <h1 className="font-black text-4xl md:text-5xl text-white mb-2" style={{ fontFamily: 'monospace' }}>
           Top of the Game 🏆
         </h1>
 
@@ -194,20 +186,17 @@ function Leaderboard() {
                   index === 0
                     ? 'border-yellow-400/40 -translate-y-2'
                     : index === 1
-                      ? 'border-slate-400/40'
-                      : 'border-orange-400/40'
+                    ? 'border-slate-400/40'
+                    : 'border-orange-400/40'
                 }`}
               >
                 <div className="text-3xl mb-2">{BADGES[index]}</div>
-
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-xl font-black text-black mx-auto mb-2">
                   {creator.username?.[0]?.toUpperCase() || 'G'}
                 </div>
-
                 <div className="text-cyan-400 font-bold text-xs tracking-widest truncate">
                   @{creator.username}
                 </div>
-
                 <div className="text-slate-500 text-xs mt-1">
                   {formatNum(creator.followers)} followers
                 </div>
@@ -227,24 +216,18 @@ function Leaderboard() {
                   index === 0
                     ? 'border-yellow-400/40 -translate-y-2'
                     : index === 1
-                      ? 'border-slate-400/40'
-                      : 'border-orange-400/40'
+                    ? 'border-slate-400/40'
+                    : 'border-orange-400/40'
                 }`}
               >
                 <div className="text-3xl mb-2">{BADGES[index]}</div>
-
                 <div className="h-16 rounded-lg overflow-hidden mb-2 bg-black/30 flex items-center justify-center">
                   {clip.thumbnail_url ? (
-                    <img
-                      src={clip.thumbnail_url}
-                      alt={clip.title || 'Top clip'}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={clip.thumbnail_url} alt={clip.title || 'Top clip'} className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-4xl">{clip.emoji || '🎮'}</span>
                   )}
                 </div>
-
                 <div className="text-white font-bold text-xs truncate">{clip.title}</div>
                 <div className="text-slate-500 text-xs mt-1">👁 {formatNum(clip.views)}</div>
               </button>
@@ -260,53 +243,47 @@ function Leaderboard() {
             </div>
           )}
 
-          {activeTab === 'Creators' &&
-            creators.map((creator, index) => (
-              <button
-                key={creator.user_id}
-                type="button"
-                onClick={() => navigate(`/u/${creator.username}`)}
-                className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 text-left ${
-                  index < 3
-                    ? 'bg-cyan-500/5 border-cyan-500/20'
-                    : 'bg-[#0b1425] border-cyan-500/10'
-                }`}
+          {activeTab === 'Creators' && creators.map((creator, index) => (
+            <button
+              key={creator.user_id}
+              type="button"
+              onClick={() => navigate(`/u/${creator.username}`)}
+              className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 text-left ${
+                index < 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'
+              }`}
+            >
+              <div
+                className="w-8 text-center font-black text-sm flex-shrink-0"
+                style={{ fontFamily: 'monospace', color: index < 3 ? RANK_COLORS[index] : '#475569' }}
               >
-                <div
-                  className="w-8 text-center font-black text-sm flex-shrink-0"
-                  style={{
-                    fontFamily: 'monospace',
-                    color: index < 3 ? RANK_COLORS[index] : '#475569',
-                  }}
-                >
-                  {index < 3 ? BADGES[index] : `#${index + 1}`}
-                </div>
+                {index < 3 ? BADGES[index] : `#${index + 1}`}
+              </div>
 
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm font-black text-black flex-shrink-0">
-                  {creator.username?.[0]?.toUpperCase() || 'G'}
-                </div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-sm font-black text-black flex-shrink-0">
+                {creator.username?.[0]?.toUpperCase() || 'G'}
+              </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1 text-cyan-400 font-bold text-sm truncate">
-                    @{creator.username}
-                    {creator.verified && <span title="Verified Creator">✅</span>}
-                  </div>
-                  <div className="text-slate-500 text-xs mt-0.5 truncate">
-                    {creator.bio || 'FragBeats Creator'} • {creator.clips} clips
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 text-cyan-400 font-bold text-sm truncate">
+                  @{creator.username}
+                  {creator.verified && <span title="Verified Creator">✅</span>}
                 </div>
+                <div className="text-slate-500 text-xs mt-0.5 truncate">
+                  {creator.bio || 'FragBeats Creator'} • {creator.clips} clips
+                </div>
+              </div>
 
-                <div className="text-right hidden sm:block">
-                  <div className="text-white text-xs font-bold">{formatNum(creator.views)}</div>
-                  <div className="text-slate-600 text-xs">total views</div>
-                </div>
+              <div className="text-right hidden sm:block">
+                <div className="text-white text-xs font-bold">{formatNum(creator.views)}</div>
+                <div className="text-slate-600 text-xs">total views</div>
+              </div>
 
-                <div className="text-right">
-                  <div className="text-white text-xs font-bold">{formatNum(creator.followers)}</div>
-                  <div className="text-slate-600 text-xs">followers</div>
-                </div>
-              </button>
-            ))}
+              <div className="text-right">
+                <div className="text-white text-xs font-bold">{formatNum(creator.followers)}</div>
+                <div className="text-slate-600 text-xs">followers</div>
+              </div>
+            </button>
+          ))}
 
           {activeTab === 'Clips' && clips.length === 0 && (
             <div className="text-center py-20">
@@ -323,60 +300,50 @@ function Leaderboard() {
             </div>
           )}
 
-          {activeTab === 'Clips' &&
-            clips.map((clip, index) => {
-              const color = clip.color || gameColors[clip.game] || '#00f5ff'
+          {activeTab === 'Clips' && clips.map((clip, index) => {
+            const color = clip.color || gameColors[clip.game] || '#00f5ff'
 
-              return (
-                <button
-                  key={clip.id}
-                  type="button"
-                  onClick={() => navigate(`/clip/${clip.id}`)}
-                  className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer text-left ${
-                    index < 3
-                      ? 'bg-cyan-500/5 border-cyan-500/20'
-                      : 'bg-[#0b1425] border-cyan-500/10'
-                  }`}
+            return (
+              <button
+                key={clip.id}
+                type="button"
+                onClick={() => navigate(`/clip/${clip.id}`)}
+                className={`flex items-center gap-4 p-4 rounded-lg border transition-all duration-200 hover:border-cyan-400/30 cursor-pointer text-left ${
+                  index < 3 ? 'bg-cyan-500/5 border-cyan-500/20' : 'bg-[#0b1425] border-cyan-500/10'
+                }`}
+              >
+                <div
+                  className="w-8 text-center font-black text-sm flex-shrink-0"
+                  style={{ fontFamily: 'monospace', color: index < 3 ? RANK_COLORS[index] : '#475569' }}
                 >
-                  <div
-                    className="w-8 text-center font-black text-sm flex-shrink-0"
-                    style={{
-                      fontFamily: 'monospace',
-                      color: index < 3 ? RANK_COLORS[index] : '#475569',
-                    }}
-                  >
-                    {index < 3 ? BADGES[index] : `#${index + 1}`}
-                  </div>
+                  {index < 3 ? BADGES[index] : `#${index + 1}`}
+                </div>
 
-                  <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
-                    style={{ background: `${color}22` }}
-                  >
-                    {clip.thumbnail_url ? (
-                      <img
-                        src={clip.thumbnail_url}
-                        alt={clip.title || 'Clip thumbnail'}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>{clip.emoji || '🎮'}</span>
-                    )}
-                  </div>
+                <div
+                  className="w-12 h-12 rounded-lg flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
+                  style={{ background: `${color}22` }}
+                >
+                  {clip.thumbnail_url ? (
+                    <img src={clip.thumbnail_url} alt={clip.title || 'Clip thumbnail'} className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{clip.emoji || '🎮'}</span>
+                  )}
+                </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white font-bold text-sm truncate">{clip.title}</div>
-                    <div className="text-slate-500 text-xs mt-0.5 truncate">
-                      @{clip.creatorUsername} • <span style={{ color }}>{clip.game || 'Other'}</span>
-                    </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-white font-bold text-sm truncate">{clip.title}</div>
+                  <div className="text-slate-500 text-xs mt-0.5 truncate">
+                    @{clip.creatorUsername} • <span style={{ color }}>{clip.game || 'Other'}</span>
                   </div>
+                </div>
 
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-white text-xs font-bold">👁 {formatNum(clip.views)}</div>
-                    <div className="text-slate-600 text-xs">❤️ {formatNum(clip.likes)}</div>
-                  </div>
-                </button>
-              )
-            })}
+                <div className="text-right flex-shrink-0">
+                  <div className="text-white text-xs font-bold">👁 {formatNum(clip.views)}</div>
+                  <div className="text-slate-600 text-xs">❤️ {formatNum(clip.likes)}</div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
 

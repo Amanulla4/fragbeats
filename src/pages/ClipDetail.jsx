@@ -7,6 +7,7 @@ import ShareModal from '../components/ShareModal'
 import ReportModal from '../components/ReportModal'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const TYPE_GAME_COLOR = {
   BGMI: '#00f5ff',
@@ -383,6 +384,7 @@ function ClipDetail() {
   if (!clip) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <SEO title="Clip Not Found" url={`/clip/${id}`} />
         <Navbar />
         <div className="text-center">
           <div className="text-5xl mb-4">💀</div>
@@ -401,6 +403,13 @@ function ClipDetail() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title={clip.title || 'Gaming Clip'}
+        description={`${clip.game || 'Gaming'} clip by @${creatorName} on FragBeats. ${clip.views || 0} views.`}
+        image={clip.thumbnail_url || undefined}
+        url={`/clip/${clip.id}`}
+        type="video.other"
+      />
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">
@@ -493,7 +502,6 @@ function ClipDetail() {
                 </div>
               </div>
 
-              {/* ✅ Clickable creator box → /u/:username */}
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <button
                   className="flex items-center gap-3 group active:opacity-70 transition-opacity"
@@ -600,7 +608,6 @@ function ClipDetail() {
 
                       <div className="flex-1 bg-[#0b1425] border border-cyan-500/10 rounded-lg px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
-                          {/* ✅ Clickable comment username → /u/:username */}
                           {usernames[comment.user_id] ? (
                             <button
                               className="text-cyan-400 text-xs font-bold hover:text-cyan-300 transition-colors"

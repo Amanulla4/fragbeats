@@ -1,6 +1,8 @@
+// src/pages/About.jsx
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import SEO from '../components/SEO'
 
 const TEAM = [
   { name: 'Aman Pathan', role: 'Founder & Developer', bio: 'Started as a gamer. Became a developer. Now building the platform I always wished existed. FragBeats is just the beginning 🔥', emoji: '🎮', social: 'fragkingAman' },
@@ -31,6 +33,11 @@ function About() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="About"
+        description="Learn about FragBeats — the short-form gaming clip platform built for Indian gamers."
+        url="/about"
+      />
       <Navbar />
 
       {/* Hero */}
@@ -48,7 +55,7 @@ function About() {
       </div>
 
       {/* Stats */}
-      <div className="bg-[#0b1425] border-t border-b border-cyan-500/10 py-12 px-8 mb-16">
+      {/* <div className="bg-[#0b1425] border-t border-b border-cyan-500/10 py-12 px-8 mb-16">
         <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
           {STATS.map(stat => (
             <div key={stat.label} className="text-center">
@@ -59,7 +66,7 @@ function About() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Mission */}
       <div className="max-w-4xl mx-auto px-8 mb-16">

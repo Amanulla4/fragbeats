@@ -1,9 +1,11 @@
+// src/pages/PublicProfile.jsx
 import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const gameColors = {
   BGMI: '#00f5ff',
@@ -265,6 +267,7 @@ function PublicProfile() {
   if (!profile) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-5" style={{ background: 'var(--bg)' }}>
+        <SEO title="Creator Not Found" url={`/u/${username}`} />
         <Navbar />
         <div className="text-center">
           <div className="text-5xl mb-4">💀</div>
@@ -283,6 +286,13 @@ function PublicProfile() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title={`@${profile.username}`}
+        description={profile.bio || `Check out @${profile.username}'s gaming clips on FragBeats.`}
+        image={profile.avatar_url || undefined}
+        url={`/u/${profile.username}`}
+        type="profile"
+      />
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">

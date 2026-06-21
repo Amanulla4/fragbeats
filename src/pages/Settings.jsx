@@ -1,7 +1,9 @@
+// src/pages/Settings.jsx
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useTheme } from '../context/ThemeContext'
+import SEO from '../components/SEO'
 
 const SECTIONS = ['Account', 'Notifications', 'Privacy', 'Appearance']
 
@@ -43,6 +45,7 @@ function Settings() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO title="Settings" url="/settings" />
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-8 pt-32 pb-16">

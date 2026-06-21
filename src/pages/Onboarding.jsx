@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const GAMES = ['BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V', 'Other']
 
@@ -28,7 +29,6 @@ function Onboarding() {
   const [usernameError, setUsernameError] = useState('')
   const [usernameOk, setUsernameOk] = useState(false)
 
-  // ── Username validation ────────────────────────────────────────────────────
   function isValidUsername(value) {
     return /^[a-zA-Z0-9_]{3,20}$/.test(value)
   }
@@ -109,6 +109,8 @@ function Onboarding() {
       className="min-h-screen flex items-center justify-center px-5 py-12"
       style={{ background: '#040810' }}
     >
+      <SEO title="Welcome to FragBeats" url="/onboarding" />
+
       {/* Background glow */}
       <div
         className="fixed inset-0 pointer-events-none"
@@ -193,7 +195,6 @@ function Onboarding() {
                 }`}
               />
 
-              {/* Status icon */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
                 {checking && (
                   <span className="text-slate-500 animate-pulse">⏳</span>
@@ -207,7 +208,6 @@ function Onboarding() {
               </div>
             </div>
 
-            {/* Feedback */}
             {usernameError && (
               <p className="text-red-400 text-xs mb-4">{usernameError}</p>
             )}

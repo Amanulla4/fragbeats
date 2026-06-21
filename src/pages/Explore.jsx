@@ -8,6 +8,7 @@ import ShareModal from '../components/ShareModal'
 import { SkeletonGrid } from '../components/SkeletonCard'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SEO from '../components/SEO'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V', 'Other']
 
@@ -111,7 +112,6 @@ function Explore() {
   const [searchParams, setSearchParams] = useSearchParams()
   const loaderRef = useRef(null)
 
-  // ✅ Read ?game= from URL on first render; fall back to 'All'
   const initialGame = GAMES.includes(searchParams.get('game')) ? searchParams.get('game') : 'All'
 
   const [activeGame, setActiveGame] = useState(initialGame)
@@ -132,7 +132,6 @@ function Explore() {
     setVisibleCount(8)
   }, [activeGame, search])
 
-  // ✅ Sync URL when filter changes
   function handleGameChange(game) {
     setActiveGame(game)
     if (game === 'All') {
@@ -214,7 +213,6 @@ function Explore() {
     if (isLiked) {
       await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', clip.id)
       await supabase.from('clips').update({ likes: nextLikes }).eq('id', clip.id)
-
       setLiked((prev) => prev.filter((id) => id !== clip.id))
     } else {
       const { error } = await supabase
@@ -224,7 +222,6 @@ function Explore() {
       if (error) return
 
       await supabase.from('clips').update({ likes: nextLikes }).eq('id', clip.id)
-
       setLiked((prev) => [...prev, clip.id])
 
       if (clip.user_id && user.id !== clip.user_id) {
@@ -246,19 +243,22 @@ function Explore() {
 
   const filtered = clips.filter((clip) => {
     const query = search.trim().toLowerCase()
-
     const matchGame = activeGame === 'All' || clip.game === activeGame
     const matchSearch =
       !query ||
       (clip.title || '').toLowerCase().includes(query) ||
       (clip.game || '').toLowerCase().includes(query) ||
       (clip.music || '').toLowerCase().includes(query)
-
     return matchGame && matchSearch
   })
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Explore"
+        description="Discover the best gaming clips from Indian creators. Filter by BGMI, Valorant, Free Fire and more."
+        url="/explore"
+      />
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-32">
@@ -272,10 +272,7 @@ function Explore() {
         </h1>
 
         <div className="relative mb-6">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-            🔍
-          </span>
-
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
           <input
             type="text"
             placeholder="Search by game, title or music..."
@@ -329,19 +326,11 @@ function Explore() {
                 {loadingMore ? (
                   <div className="flex justify-center gap-2">
                     <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                    <div
-                      className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
-                      style={{ animationDelay: '150ms' }}
-                    />
-                    <div
-                      className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '300ms' }}
-                    />
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-xs tracking-widest uppercase">
-                    Scroll for more
-                  </p>
+                  <p className="text-slate-500 text-xs tracking-widest uppercase">Scroll for more</p>
                 )}
               </div>
             )}

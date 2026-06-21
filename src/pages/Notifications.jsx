@@ -1,3 +1,4 @@
+// src/pages/Notifications.jsx
 import { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -5,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useNotifications } from '../context/NotificationContext'
+import SEO from '../components/SEO'
 
 const TYPE_ICON = {
   like: '❤️',
@@ -30,7 +32,6 @@ function Notifications() {
 
   useEffect(() => {
     if (!user) return
-
     fetchNotifications()
   }, [user?.id])
 
@@ -64,11 +65,9 @@ function Notifications() {
 
       if (profiles) {
         const usernameMap = {}
-
         profiles.forEach((profile) => {
           usernameMap[profile.user_id] = profile.username
         })
-
         setUsernames(usernameMap)
       }
     }
@@ -131,7 +130,6 @@ function Notifications() {
   const filteredNotifications = notifications.filter((notification) => {
     if (filter === 'All') return true
     if (filter === 'Unread') return !notification.read
-
     return notification.type === filter.toLowerCase()
   })
 
@@ -139,6 +137,7 @@ function Notifications() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO title="Notifications" url="/notifications" />
       <Navbar />
 
       <div className="max-w-2xl mx-auto px-8 pt-32 pb-40 md:pb-24">
@@ -214,9 +213,7 @@ function Notifications() {
                 >
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-                    style={{
-                      background: `${TYPE_COLOR[notification.type] || '#00f5ff'}22`,
-                    }}
+                    style={{ background: `${TYPE_COLOR[notification.type] || '#00f5ff'}22` }}
                   >
                     {TYPE_ICON[notification.type] || '🔔'}
                   </div>

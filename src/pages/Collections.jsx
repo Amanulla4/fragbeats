@@ -1,8 +1,10 @@
+// src/pages/Collections.jsx
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { supabase } from '../lib/supabase'
+import SEO from '../components/SEO'
 
 const GAMES = [
   { name: 'BGMI', emoji: '🔫', color: '#00f5ff' },
@@ -78,6 +80,11 @@ function Collections() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Collections"
+        description="Browse gaming clip collections by game on FragBeats."
+        url="/collections"
+      />
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-44 md:pb-24">

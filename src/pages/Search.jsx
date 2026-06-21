@@ -1,8 +1,10 @@
+// src/pages/Search.jsx
 import { useState, useCallback } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import SEO from '../components/SEO'
 
 const TABS = ['All', 'Clips', 'Creators']
 
@@ -70,15 +72,17 @@ function Search() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <SEO
+        title="Search"
+        description="Search gaming clips and creators on FragBeats."
+        url="/search"
+      />
       <Navbar />
 
       <div className="max-w-3xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">
         <p className="text-cyan-400 text-xs tracking-widest uppercase mb-3">// SEARCH</p>
 
-        <h1
-          className="font-black text-4xl text-white mb-8"
-          style={{ fontFamily: 'monospace' }}
-        >
+        <h1 className="font-black text-4xl text-white mb-8" style={{ fontFamily: 'monospace' }}>
           Find Anything 🔍
         </h1>
 
@@ -174,7 +178,6 @@ function Search() {
                           <div className="text-white font-bold text-sm group-hover:text-cyan-400 transition-colors duration-200 truncate">
                             {clip.title || 'Untitled Clip'}
                           </div>
-
                           <div className="text-slate-500 text-xs mt-0.5 truncate">
                             <span style={{ color }}>{clip.game || 'Other'}</span>
                             {' • '}🎵 {clip.music || 'No music'}
@@ -215,7 +218,6 @@ function Search() {
                           @{creator.username || 'creator'}
                           {creator.verified && <span title="Verified Creator">✅</span>}
                         </div>
-
                         <div className="text-slate-500 text-xs mt-0.5 truncate">
                           {creator.bio || 'FragBeats Creator'}
                         </div>

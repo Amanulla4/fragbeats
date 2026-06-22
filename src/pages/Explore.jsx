@@ -8,6 +8,7 @@ import ShareModal from '../components/ShareModal'
 import { SkeletonGrid } from '../components/SkeletonCard'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import SEO from '../components/SEO'
 
 const GAMES = ['All', 'BGMI', 'Valorant', 'Free Fire', 'COD Mobile', 'GTA V', 'Other']
@@ -109,6 +110,7 @@ function ClipCard({ clip, onLike, liked, onComment, onShare, onClick }) {
 function Explore() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const loaderRef = useRef(null)
 
@@ -152,6 +154,7 @@ function Explore() {
 
     if (error) {
       console.error('Explore clips error:', error.message)
+      toast.error('Could not load clips. Please refresh.')
       setIsLoading(false)
       return
     }
@@ -201,6 +204,7 @@ function Explore() {
     return () => observer.disconnect()
   }, [loadMore])
 
+  // ── Like: optimistic + rollback + error toast ─────────────────────────────
   async function toggleLike(clip) {
     if (!user) {
       navigate('/auth')
@@ -208,21 +212,51 @@ function Explore() {
     }
 
     const isLiked = liked.includes(clip.id)
-    const nextLikes = Math.max(0, (clip.likes || 0) + (isLiked ? -1 : 1))
+    const currentLikes = clip.likes || 0
+    const nextLikes = Math.max(0, currentLikes + (isLiked ? -1 : 1))
+
+    // Optimistic update
+    setLiked((prev) =>
+      isLiked ? prev.filter((id) => id !== clip.id) : [...prev, clip.id]
+    )
+    setClips((prev) =>
+      prev.map((item) => (item.id === clip.id ? { ...item, likes: nextLikes } : item))
+    )
 
     if (isLiked) {
-      await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', clip.id)
+      const { error } = await supabase
+        .from('clip_likes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('clip_id', clip.id)
+
+      if (error) {
+        // Rollback
+        setLiked((prev) => [...prev, clip.id])
+        setClips((prev) =>
+          prev.map((item) => (item.id === clip.id ? { ...item, likes: currentLikes } : item))
+        )
+        toast.error('Could not unlike. Try again.')
+        return
+      }
+
       await supabase.from('clips').update({ likes: nextLikes }).eq('id', clip.id)
-      setLiked((prev) => prev.filter((id) => id !== clip.id))
     } else {
       const { error } = await supabase
         .from('clip_likes')
         .insert({ user_id: user.id, clip_id: clip.id })
 
-      if (error) return
+      if (error) {
+        // Rollback
+        setLiked((prev) => prev.filter((id) => id !== clip.id))
+        setClips((prev) =>
+          prev.map((item) => (item.id === clip.id ? { ...item, likes: currentLikes } : item))
+        )
+        toast.error('Could not like clip. Try again.')
+        return
+      }
 
       await supabase.from('clips').update({ likes: nextLikes }).eq('id', clip.id)
-      setLiked((prev) => [...prev, clip.id])
 
       if (clip.user_id && user.id !== clip.user_id) {
         await supabase.from('notifications').insert({
@@ -235,10 +269,6 @@ function Explore() {
         })
       }
     }
-
-    setClips((prev) =>
-      prev.map((item) => (item.id === clip.id ? { ...item, likes: nextLikes } : item))
-    )
   }
 
   const filtered = clips.filter((clip) => {

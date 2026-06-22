@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useToast } from '../context/ToastContext'
 import SEO from '../components/SEO'
 
 const gameColors = {
@@ -259,6 +260,7 @@ function ClipGrid({ clips, navigate, onDelete, showDelete = false }) {
 function Profile() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const toast = useToast()
 
   const [clips, setClips] = useState([])
   const [savedClips, setSavedClips] = useState([])
@@ -271,8 +273,6 @@ function Profile() {
   const [activeTab, setActiveTab] = useState('myClips')
   const [editOpen, setEditOpen] = useState(false)
   const [deleteClip, setDeleteClip] = useState(null)
-  const [saveSuccess, setSaveSuccess] = useState(false)
-  const [deleteSuccess, setDeleteSuccess] = useState(false)
 
   const followerChannelRef = useRef(null)
 
@@ -360,25 +360,34 @@ function Profile() {
     setSavedLoading(false)
   }
 
+  // ── Save profile: toast on success/failure ─────────────────────────────────
   async function handleSaveProfile(newUsername, newBio) {
     const { error } = await supabase
       .from('profiles')
       .update({ username: newUsername, bio: newBio })
       .eq('user_id', user.id)
 
-    if (error) return { error: error.message || 'Could not update profile' }
+    if (error) {
+      return { error: error.message || 'Could not update profile' }
+    }
 
     setUsername(newUsername)
     setBio(newBio)
     setEditOpen(false)
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    toast.success('Profile updated!', { icon: '✏️' })
 
     return { success: true }
   }
 
+  // ── Delete clip: toast on success/failure ──────────────────────────────────
   async function handleDeleteClip(clip) {
-    await supabase.from('clips').delete().eq('id', clip.id)
+    const { error } = await supabase.from('clips').delete().eq('id', clip.id)
+
+    if (error) {
+      setDeleteClip(null)
+      toast.error('Could not delete clip. Try again.')
+      return
+    }
 
     if (clip.video_url) {
       const path = clip.video_url.split('/clips/')[1]
@@ -393,8 +402,7 @@ function Profile() {
     setClips((prev) => prev.filter((item) => item.id !== clip.id))
     setSavedClips((prev) => prev.filter((item) => item.id !== clip.id))
     setDeleteClip(null)
-    setDeleteSuccess(true)
-    setTimeout(() => setDeleteSuccess(false), 3000)
+    toast.show('Clip deleted', { icon: '🗑️' })
   }
 
   const playableClips = clips.filter((clip) => clip.video_url)
@@ -436,18 +444,6 @@ function Profile() {
       )}
 
       <div className="max-w-4xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">
-        {saveSuccess && (
-          <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3 text-green-400 text-sm mb-6 text-center">
-            ✅ Profile updated!
-          </div>
-        )}
-
-        {deleteSuccess && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6 text-center">
-            🗑️ Clip deleted!
-          </div>
-        )}
-
         <div className="bg-[#0b1425] border border-cyan-500/20 rounded-xl p-6 md:p-8 mb-8 relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center text-4xl flex-shrink-0">

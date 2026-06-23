@@ -20,6 +20,44 @@ const TYPE_COLOR = {
   follow: '#bf00ff',
 }
 
+// What each filter's empty state should say
+const FILTER_EMPTY = {
+  All: {
+    icon: '🔔',
+    title: 'No activity yet',
+    sub: 'Upload a clip or follow some creators — activity will show up here.',
+    cta: 'EXPLORE CREATORS →',
+    ctaPath: '/leaderboard',
+  },
+  Unread: {
+    icon: '✅',
+    title: "You're all caught up!",
+    sub: 'No unread notifications right now.',
+    cta: null,
+  },
+  Like: {
+    icon: '❤️',
+    title: 'No likes yet',
+    sub: 'Upload a clip and share it — likes will start coming in.',
+    cta: 'UPLOAD A CLIP →',
+    ctaPath: '/upload',
+  },
+  Comment: {
+    icon: '💬',
+    title: 'No comments yet',
+    sub: "When someone comments on your clips, it'll show here.",
+    cta: 'BROWSE CLIPS →',
+    ctaPath: '/explore',
+  },
+  Follow: {
+    icon: '👤',
+    title: 'No new followers yet',
+    sub: 'Keep uploading and engaging — your audience will grow.',
+    cta: 'SEE TOP CREATORS →',
+    ctaPath: '/leaderboard',
+  },
+}
+
 function Notifications() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -27,6 +65,7 @@ function Notifications() {
 
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [filter, setFilter] = useState('All')
   const [usernames, setUsernames] = useState({})
 
@@ -37,6 +76,7 @@ function Notifications() {
 
   async function fetchNotifications() {
     setLoading(true)
+    setError(false)
 
     const { data, error } = await supabase
       .from('notifications')
@@ -46,6 +86,7 @@ function Notifications() {
 
     if (error) {
       console.error('Notifications fetch error:', error.message)
+      setError(true)
       setLoading(false)
       return
     }
@@ -105,7 +146,6 @@ function Notifications() {
 
   function openNotification(notification) {
     markRead(notification)
-
     if (notification.clip_id) {
       navigate(`/clip/${notification.clip_id}`)
     }
@@ -113,13 +153,10 @@ function Notifications() {
 
   function formatTime(timestamp) {
     if (!timestamp) return ''
-
     const diff = Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000)
-
     if (diff < 60) return 'just now'
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-
     return `${Math.floor(diff / 86400)}d ago`
   }
 
@@ -134,6 +171,7 @@ function Notifications() {
   })
 
   const unreadCount = notifications.filter((notification) => !notification.read).length
+  const emptyConfig = FILTER_EMPTY[filter] || FILTER_EMPTY.All
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -162,6 +200,7 @@ function Notifications() {
           )}
         </div>
 
+        {/* Filter tabs */}
         <div className="flex gap-3 flex-wrap mb-8">
           {['All', 'Unread', 'Like', 'Comment', 'Follow'].map((item) => (
             <button
@@ -175,14 +214,15 @@ function Notifications() {
               }`}
               style={{ fontFamily: 'monospace' }}
             >
-              {item} {item === 'Unread' && unreadCount > 0 ? `(${unreadCount})` : ''}
+              {item}{item === 'Unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
             </button>
           ))}
         </div>
 
+        {/* ── Loading skeleton ─────────────────────────────────────────────── */}
         {loading && (
           <div className="flex flex-col gap-3">
-            {[1, 2, 3, 4].map((item) => (
+            {[1, 2, 3, 4, 5].map((item) => (
               <div
                 key={item}
                 className="flex items-center gap-4 p-4 rounded-lg border border-cyan-500/10 bg-[#0b1425] animate-pulse"
@@ -197,7 +237,32 @@ function Notifications() {
           </div>
         )}
 
-        {!loading && (
+        {/* ── Error state ──────────────────────────────────────────────────── */}
+        {!loading && error && (
+          <div className="text-center py-20 border border-red-500/20 rounded-xl bg-red-500/5">
+            <div className="text-5xl mb-4">⚠️</div>
+            <p
+              className="font-black text-white tracking-widest mb-2"
+              style={{ fontFamily: 'monospace' }}
+            >
+              COULDN'T LOAD ACTIVITY
+            </p>
+            <p className="text-slate-500 text-sm mb-6">
+              Something went wrong. Check your connection.
+            </p>
+            <button
+              type="button"
+              onClick={fetchNotifications}
+              className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-3 rounded-lg font-black text-sm tracking-widest hover:brightness-110 transition-all"
+              style={{ fontFamily: 'monospace' }}
+            >
+              TRY AGAIN →
+            </button>
+          </div>
+        )}
+
+        {/* ── Notifications list ───────────────────────────────────────────── */}
+        {!loading && !error && (
           <div className="flex flex-col gap-3">
             {filteredNotifications.length > 0 ? (
               filteredNotifications.map((notification) => (
@@ -225,7 +290,6 @@ function Notifications() {
                       </span>{' '}
                       <span className="text-slate-300">{notification.message}</span>
                     </p>
-
                     <p className="text-slate-600 text-xs mt-1">
                       {formatTime(notification.created_at)}
                     </p>
@@ -237,14 +301,28 @@ function Notifications() {
                 </button>
               ))
             ) : (
+              // ── Per-filter empty state ────────────────────────────────────
               <div className="text-center py-20">
-                <div className="text-5xl mb-4">🔔</div>
-                <p className="text-slate-400">
-                  {filter === 'Unread' ? 'No unread notifications' : 'No notifications yet'}
+                <div className="text-5xl mb-5">{emptyConfig.icon}</div>
+                <p
+                  className="font-black text-white tracking-widest mb-2"
+                  style={{ fontFamily: 'monospace' }}
+                >
+                  {emptyConfig.title.toUpperCase()}
                 </p>
-                <p className="text-slate-500 text-sm mt-2">
-                  When someone likes, comments, or follows you, it shows here.
+                <p className="text-slate-500 text-sm mb-8 max-w-xs mx-auto leading-relaxed">
+                  {emptyConfig.sub}
                 </p>
+                {emptyConfig.cta && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(emptyConfig.ctaPath)}
+                    className="bg-gradient-to-r from-cyan-400 to-purple-500 text-black px-6 py-3 rounded-lg font-black text-sm tracking-widest hover:brightness-110 transition-all"
+                    style={{ fontFamily: 'monospace' }}
+                  >
+                    {emptyConfig.cta}
+                  </button>
+                )}
               </div>
             )}
           </div>

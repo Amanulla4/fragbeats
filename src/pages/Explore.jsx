@@ -1,4 +1,3 @@
-// src/pages/Explore.jsx
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Navbar from '../components/Navbar'
@@ -36,7 +35,7 @@ function ClipCard({ clip, onLike, liked, onComment, onShare, onClick }) {
         }}
       >
         {clip.thumbnail_url ? (
-          <img src={clip.thumbnail_url} alt={clip.title} className="w-full h-full object-cover" />
+          <img src={clip.thumbnail_url} alt={clip.title || 'Clip thumbnail'} className="w-full h-full object-cover" />
         ) : (
           <span className="text-5xl">{clip.emoji || '🎮'}</span>
         )}
@@ -127,6 +126,15 @@ function Explore() {
   const [clips, setClips] = useState([])
 
   useEffect(() => {
+    const gameFromUrl = searchParams.get('game')
+    const nextGame = GAMES.includes(gameFromUrl) ? gameFromUrl : 'All'
+
+    if (nextGame !== activeGame) {
+      setActiveGame(nextGame)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     fetchClips()
   }, [user?.id])
 
@@ -136,6 +144,7 @@ function Explore() {
 
   function handleGameChange(game) {
     setActiveGame(game)
+
     if (game === 'All') {
       setSearchParams({})
     } else {
@@ -204,7 +213,6 @@ function Explore() {
     return () => observer.disconnect()
   }, [loadMore])
 
-  // ── Like: optimistic + rollback + error toast ─────────────────────────────
   async function toggleLike(clip) {
     if (!user) {
       navigate('/auth')
@@ -215,7 +223,6 @@ function Explore() {
     const currentLikes = clip.likes || 0
     const nextLikes = Math.max(0, currentLikes + (isLiked ? -1 : 1))
 
-    // Optimistic update
     setLiked((prev) =>
       isLiked ? prev.filter((id) => id !== clip.id) : [...prev, clip.id]
     )
@@ -231,7 +238,6 @@ function Explore() {
         .eq('clip_id', clip.id)
 
       if (error) {
-        // Rollback
         setLiked((prev) => [...prev, clip.id])
         setClips((prev) =>
           prev.map((item) => (item.id === clip.id ? { ...item, likes: currentLikes } : item))
@@ -247,7 +253,6 @@ function Explore() {
         .insert({ user_id: user.id, clip_id: clip.id })
 
       if (error) {
-        // Rollback
         setLiked((prev) => prev.filter((id) => id !== clip.id))
         setClips((prev) =>
           prev.map((item) => (item.id === clip.id ? { ...item, likes: currentLikes } : item))
@@ -289,6 +294,7 @@ function Explore() {
         description="Discover the best gaming clips from Indian creators. Filter by BGMI, Valorant, Free Fire and more."
         url="/explore"
       />
+
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-32">
@@ -356,8 +362,14 @@ function Explore() {
                 {loadingMore ? (
                   <div className="flex justify-center gap-2">
                     <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div
+                      className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+                      style={{ animationDelay: '150ms' }}
+                    />
+                    <div
+                      className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '300ms' }}
+                    />
                   </div>
                 ) : (
                   <p className="text-slate-500 text-xs tracking-widest uppercase">Scroll for more</p>

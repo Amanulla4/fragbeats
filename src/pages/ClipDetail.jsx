@@ -1,4 +1,3 @@
-// src/pages/ClipDetail.jsx
 import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -252,9 +251,12 @@ function ClipDetail() {
     })
   }
 
-  // ── Like: optimistic + rollback + toast on failure only ────────────────────
   async function handleLike() {
-    if (!user) { navigate('/auth'); return }
+    if (!user) {
+      navigate('/auth')
+      return
+    }
+
     if (likeLoading) return
     setLikeLoading(true)
 
@@ -265,7 +267,11 @@ function ClipDetail() {
       setLiked(false)
       setLikeCount(nextCount)
 
-      const { error } = await supabase.from('clip_likes').delete().eq('user_id', user.id).eq('clip_id', id)
+      const { error } = await supabase
+        .from('clip_likes')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('clip_id', id)
 
       if (error) {
         setLiked(true)
@@ -286,7 +292,9 @@ function ClipDetail() {
     setLiked(true)
     setLikeCount(nextCount)
 
-    const { error } = await supabase.from('clip_likes').insert({ user_id: user.id, clip_id: id })
+    const { error } = await supabase
+      .from('clip_likes')
+      .insert({ user_id: user.id, clip_id: id })
 
     if (error) {
       setLiked(false)
@@ -301,9 +309,12 @@ function ClipDetail() {
     setLikeLoading(false)
   }
 
-  // ── Follow: optimistic + rollback + success toast ───────────────────────────
   async function handleFollow() {
-    if (!user) { navigate('/auth'); return }
+    if (!user) {
+      navigate('/auth')
+      return
+    }
+
     if (followLoading || user.id === clip?.user_id) return
     setFollowLoading(true)
 
@@ -343,9 +354,11 @@ function ClipDetail() {
     setFollowLoading(false)
   }
 
-  // ── Bookmark: optimistic + rollback + success toast ─────────────────────────
   async function handleBookmark() {
-    if (!user) { navigate('/auth'); return }
+    if (!user) {
+      navigate('/auth')
+      return
+    }
 
     if (bookmarked) {
       setBookmarked(false)
@@ -375,15 +388,16 @@ function ClipDetail() {
     toast.success('Saved to your collection', { icon: '🔖' })
   }
 
-  // ── Comment: optimistic insert + rollback on failure ────────────────────────
   async function handleComment() {
-    if (!user) { navigate('/auth'); return }
+    if (!user) {
+      navigate('/auth')
+      return
+    }
 
     const text = newComment.trim()
     if (!text || posting) return
     setPosting(true)
 
-    // Optimistic temp comment
     const tempId = `temp-${Date.now()}`
     const optimisticComment = {
       id: tempId,
@@ -403,16 +417,14 @@ function ClipDetail() {
       .single()
 
     if (error || !data) {
-      // Rollback: remove the optimistic comment
-      setComments((prev) => prev.filter((c) => c.id !== tempId))
+      setComments((prev) => prev.filter((comment) => comment.id !== tempId))
       setNewComment(text)
       toast.error('Could not post comment. Try again.')
       setPosting(false)
       return
     }
 
-    // Replace temp comment with real one
-    setComments((prev) => prev.map((c) => (c.id === tempId ? data : c)))
+    setComments((prev) => prev.map((comment) => (comment.id === tempId ? data : comment)))
 
     if (!usernames[user.id]) {
       const { data: profile } = await supabase
@@ -493,6 +505,7 @@ function ClipDetail() {
         url={`/clip/${clip.id}`}
         type="video.other"
       />
+
       <Navbar />
 
       <div className="max-w-6xl mx-auto px-5 md:px-8 pt-32 pb-44 md:pb-24">
@@ -511,7 +524,9 @@ function ClipDetail() {
               <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 flex items-center gap-3">
                 <span className="text-lg">🎵</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-white text-xs font-bold truncate">{clip.music || 'No music selected'}</div>
+                  <div className="text-white text-xs font-bold truncate">
+                    {clip.music || 'No music selected'}
+                  </div>
                   <div className="w-full h-1 bg-white/20 rounded-full mt-1">
                     <div className="w-1/3 h-full bg-gradient-to-r from-cyan-400 to-purple-500 rounded-full" />
                   </div>
@@ -561,7 +576,11 @@ function ClipDetail() {
                   <button
                     onClick={handleWhatsAppShare}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 hover:brightness-110"
-                    style={{ borderColor: 'rgba(37,211,102,0.4)', color: '#25D366', background: 'rgba(37,211,102,0.08)' }}
+                    style={{
+                      borderColor: 'rgba(37,211,102,0.4)',
+                      color: '#25D366',
+                      background: 'rgba(37,211,102,0.08)',
+                    }}
                   >
                     Share
                   </button>
@@ -577,7 +596,11 @@ function ClipDetail() {
                     <button
                       onClick={() => setReportOpen(true)}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-all duration-200 hover:brightness-110"
-                      style={{ borderColor: 'rgba(255,45,85,0.3)', color: '#ff2d55', background: 'rgba(255,45,85,0.08)' }}
+                      style={{
+                        borderColor: 'rgba(255,45,85,0.3)',
+                        color: '#ff2d55',
+                        background: 'rgba(255,45,85,0.08)',
+                      }}
                     >
                       🚩 Report
                     </button>
@@ -587,7 +610,8 @@ function ClipDetail() {
 
               <div className="flex items-center justify-between p-4 bg-[#0b1425] border border-cyan-500/10 rounded-xl">
                 <button
-                  className="flex items-center gap-3 group active:opacity-70 transition-opacity"
+                  type="button"
+                  className="flex items-center gap-3 group active:opacity-70 transition-opacity text-left"
                   onClick={() => clipCreator && navigate(`/u/${clipCreator}`)}
                   style={{ cursor: clipCreator ? 'pointer' : 'default' }}
                 >
@@ -696,6 +720,7 @@ function ClipDetail() {
                         <div className="flex items-center gap-2 mb-1">
                           {usernames[comment.user_id] ? (
                             <button
+                              type="button"
                               className="text-cyan-400 text-xs font-bold hover:text-cyan-300 transition-colors"
                               onClick={() => navigate(`/u/${usernames[comment.user_id]}`)}
                             >
@@ -706,7 +731,9 @@ function ClipDetail() {
                               @{getUsername(comment.user_id)}
                             </span>
                           )}
+
                           {isVerified(comment.user_id) && <span className="text-xs">✅</span>}
+
                           <span className="text-slate-600 text-xs">
                             {String(comment.id).startsWith('temp-') ? 'posting...' : formatTime(comment.created_at)}
                           </span>
@@ -762,6 +789,7 @@ function ClipDetail() {
               ))}
 
               <button
+                type="button"
                 onClick={() => navigate('/explore')}
                 className="w-full py-3 border border-cyan-500/20 text-cyan-400 text-xs tracking-widest rounded-lg hover:border-cyan-400 transition-all duration-200"
               >

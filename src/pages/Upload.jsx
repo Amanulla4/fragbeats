@@ -35,6 +35,10 @@ const gameColors = {
   'COD Mobile': '#ff2d55', 'GTA V': '#ffd700', 'Other': '#00f5ff',
 }
 
+// ✅ Max file size — Supabase Free Plan hard limit
+const MAX_FILE_SIZE_MB = 50
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
 function extractThumbnail(videoFile) {
   return new Promise((resolve) => {
     const video = document.createElement('video')
@@ -74,21 +78,26 @@ function Upload() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStage, setUploadStage] = useState('')
   const [error, setError] = useState('')
+  const [fileTooLarge, setFileTooLarge] = useState(false)
 
   async function handleFileSelect(file) {
     if (!file) return
 
-    if (!file.type.startsWith('video/')) {
-      setError('Please upload a video file (MP4, MOV, AVI, etc.)')
-      return
-    }
-
-    if (file.size > 500 * 1024 * 1024) {
-      setError(`File too large (${(file.size / (1024 * 1024)).toFixed(0)}MB). Maximum size is 500MB.`)
-      return
-    }
-
+    setFileTooLarge(false)
     setError('')
+
+    if (!file.type.startsWith('video/')) {
+      setError('Please upload a video file (MP4, MOV, etc.)')
+      return
+    }
+
+    // ✅ 50MB hard limit — Supabase Free Plan
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setFileTooLarge(true)
+      setError(`File is ${(file.size / (1024 * 1024)).toFixed(0)}MB — max allowed is ${MAX_FILE_SIZE_MB}MB.`)
+      return
+    }
+
     setVideoFile(file)
 
     const blob = await extractThumbnail(file)
@@ -110,18 +119,12 @@ function Upload() {
   }
 
   async function handleSubmit() {
-    if (!videoFile) {
-      setError('No video file selected.')
-      return
-    }
-
-    if (!videoFile.type.startsWith('video/')) {
-      setError('Invalid file type. Please upload a video.')
-      return
-    }
+    if (!videoFile) { setError('No video file selected.'); return }
+    if (!videoFile.type.startsWith('video/')) { setError('Invalid file type.'); return }
 
     setSaving(true)
     setError('')
+    setFileTooLarge(false)
     setUploadProgress(5)
     setUploadStage('Generating thumbnail...')
 
@@ -159,13 +162,17 @@ function Upload() {
 
       const { error: storageError } = await supabase.storage
         .from('clips')
-        .upload(videoPath, videoFile, {
-          cacheControl: '3600',
-          upsert: false,
-        })
+        .upload(videoPath, videoFile, { cacheControl: '3600', upsert: false })
 
       if (storageError) {
-        throw new Error(`Video upload failed: ${storageError.message}`)
+        // ✅ Friendly message for size errors from Supabase
+        if (storageError.message?.toLowerCase().includes('size') ||
+            storageError.message?.toLowerCase().includes('limit') ||
+            storageError.message?.toLowerCase().includes('exceeded')) {
+          setFileTooLarge(true)
+          throw new Error(`File too large for upload. Please compress your clip to under ${MAX_FILE_SIZE_MB}MB and try again.`)
+        }
+        throw new Error(`Upload failed: ${storageError.message}`)
       }
 
       setUploadProgress(80)
@@ -174,7 +181,7 @@ function Upload() {
       const { data: urlData } = supabase.storage.from('clips').getPublicUrl(videoPath)
 
       if (!urlData?.publicUrl) {
-        throw new Error('Could not get video URL after upload. Please try again.')
+        throw new Error('Could not get video URL. Please try again.')
       }
 
       const videoUrl = urlData.publicUrl
@@ -196,9 +203,7 @@ function Upload() {
         user_id: user.id,
       })
 
-      if (dbError) {
-        throw new Error(`Failed to save clip: ${dbError.message}`)
-      }
+      if (dbError) throw new Error(`Failed to save clip: ${dbError.message}`)
 
       setUploadProgress(100)
       setUploadStage('Done!')
@@ -259,6 +264,7 @@ function Upload() {
         <h1 className="font-black text-4xl text-white mb-2" style={{ fontFamily: 'monospace' }}>Drop Your Frag 🎮</h1>
         <p className="text-slate-400 mb-10">Share your best gaming moment with the world</p>
 
+        {/* Step indicator */}
         <div className="flex items-center gap-3 mb-10">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-3">
@@ -282,12 +288,48 @@ function Upload() {
           </span>
         </div>
 
-        {error && (
+        {/* ✅ Standard error */}
+        {error && !fileTooLarge && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-400 text-sm mb-6">
             ❌ {error}
           </div>
         )}
 
+        {/* ✅ File too large — special helpful error with tips */}
+        {fileTooLarge && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl px-5 py-4 mb-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">📦</span>
+              <div>
+                <p className="text-orange-400 font-bold text-sm mb-1">{error}</p>
+                <p className="text-slate-400 text-xs mb-3 leading-relaxed">
+                  Most gaming clips under 60 seconds are well within the limit. Try one of these:
+                </p>
+                <ul className="text-slate-500 text-xs space-y-1 mb-3">
+                  <li>• Trim your clip to the best 30–45 seconds</li>
+                  <li>• Compress with <span className="text-cyan-400">CapCut</span>, <span className="text-cyan-400">HandBrake</span>, or <span className="text-cyan-400">VN Video Editor</span></li>
+                  <li>• Lower the resolution to 720p before exporting</li>
+                  <li>• Export as MP4 (H.264) for smallest file size</li>
+                </ul>
+                <button
+                  onClick={() => {
+                    setFileTooLarge(false)
+                    setError('')
+                    setVideoFile(null)
+                    setThumbnailPreview(null)
+                    fileInputRef.current?.click()
+                  }}
+                  className="text-xs font-black tracking-widest px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110 transition-all"
+                  style={{ fontFamily: 'monospace' }}
+                >
+                  CHOOSE ANOTHER FILE →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 1 ─────────────────────────────────────────────────────── */}
         {step === 1 && (
           <div>
             <input ref={fileInputRef} type="file" accept="video/*" onChange={handleFileInput} className="hidden" />
@@ -296,13 +338,15 @@ function Upload() {
               onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
               onDragLeave={() => setDragging(false)}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl overflow-hidden text-center cursor-pointer transition-all duration-300 ${
-                dragging
-                  ? 'border-cyan-400 bg-cyan-500/10'
+              onClick={() => !fileTooLarge && fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl overflow-hidden text-center transition-all duration-300 ${
+                fileTooLarge
+                  ? 'border-orange-500/40 opacity-50 cursor-not-allowed'
+                  : dragging
+                  ? 'border-cyan-400 bg-cyan-500/10 cursor-pointer'
                   : videoFile
-                  ? 'border-green-400'
-                  : 'border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/5'
+                  ? 'border-green-400 cursor-pointer'
+                  : 'border-cyan-500/20 hover:border-cyan-400/50 hover:bg-cyan-500/5 cursor-pointer'
               }`}
             >
               {videoFile && thumbnailPreview ? (
@@ -329,16 +373,18 @@ function Upload() {
                   <div className="text-5xl mb-4">🎮</div>
                   <p className="text-white font-bold mb-2">Drag & drop your clip here</p>
                   <p className="text-slate-500 text-sm">or click to browse files</p>
-                  <p className="text-slate-600 text-xs mt-4">MP4, MOV, AVI up to 500MB</p>
+                  {/* ✅ Updated copy to match real limit */}
+                  <p className="text-slate-600 text-xs mt-4">MP4, MOV up to {MAX_FILE_SIZE_MB}MB</p>
+                  <p className="text-slate-700 text-xs mt-1">Keep clips under 60s for best results</p>
                 </div>
               )}
             </div>
 
             <button
-              onClick={() => videoFile && setStep(2)}
-              disabled={!videoFile}
+              onClick={() => videoFile && !fileTooLarge && setStep(2)}
+              disabled={!videoFile || fileTooLarge}
               className={`w-full mt-6 py-3 rounded-lg font-black text-sm tracking-widest transition-all duration-300 ${
-                videoFile
+                videoFile && !fileTooLarge
                   ? 'bg-gradient-to-r from-cyan-400 to-purple-500 text-black hover:brightness-110'
                   : 'bg-[#0b1425] text-slate-600 cursor-not-allowed'
               }`}
@@ -349,6 +395,7 @@ function Upload() {
           </div>
         )}
 
+        {/* ── STEP 2 ─────────────────────────────────────────────────────── */}
         {step === 2 && (
           <div className="flex flex-col gap-5">
             {thumbnailPreview && (
@@ -419,6 +466,7 @@ function Upload() {
           </div>
         )}
 
+        {/* ── STEP 3 ─────────────────────────────────────────────────────── */}
         {step === 3 && (
           <div>
             <div className="flex items-center justify-between mb-6">
